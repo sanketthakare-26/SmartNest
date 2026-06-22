@@ -1,0 +1,31 @@
+# Dependencies
+node_modules/
+client/node_modules/
+server/node_modules/
+
+# Local env files (credentials & configs)
+.env
+.env.local
+.env.*.local
+client/.env
+client/.env.local
+server/.env
+server/.env.local
+
+# Firebase Admin Private Key file
+server/config/serviceAccountKey.json
+serviceAccountKey.json
+
+# Build outputs
+client/dist/
+client/build/
+
+# Local uploads / temporary media files
+server/public/uploads/*
+!server/public/uploads/.gitkeep
+
+# Editor / System files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
