@@ -1,29 +1,16 @@
-const { admin, isMockFirebaseAdmin } = require("../config/firebase-admin");
+const admin = require("../config/firebase-admin");
 
-const firebaseAuth = async (req, res, next) => {
+module.exports = async (req, res, next) => {
   const authHeader = req.headers.authorization;
-  if (!authHeader || !authHeader.startsWith("Bearer ")) {
-    return res.status(401).json({ message: "No token provided, authorization denied" });
+  if (!authHeader?.startsWith("Bearer ")) {
+    return res.status(401).json({ message: "Unauthorized" });
   }
-
   const token = authHeader.split(" ")[1];
-
-  if (isMockFirebaseAdmin) {
-    if (token === "mock-jwt-token-xyz") {
-      req.user = { uid: "mock-uid-123", email: "admin@smartnest.com", role: "admin" };
-      return next();
-    }
-    return res.status(401).json({ message: "Invalid token in mock mode. Check configuration." });
-  }
-
   try {
-    const decodedToken = await admin.auth().verifyIdToken(token);
-    req.user = decodedToken;
+    const decoded = await admin.auth().verifyIdToken(token);
+    req.user = decoded;
     next();
-  } catch (error) {
-    console.error("Error verifying Firebase token:", error.message);
-    res.status(401).json({ message: "Token is not valid or has expired" });
+  } catch {
+    res.status(401).json({ message: "Invalid token" });
   }
 };
-
-module.exports = firebaseAuth;

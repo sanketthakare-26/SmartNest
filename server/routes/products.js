@@ -1,24 +1,11 @@
-const express = require("express");
-const router = express.Router();
-const {
-  getProducts,
-  getProductBySlug,
-  createProduct,
-  updateProduct,
-  deleteProduct,
-} = require("../controllers/productController");
-const firebaseAuth = require("../middleware/firebaseAuth");
-const upload = require("../middleware/upload");
+const router = require("express").Router();
+const ctrl = require("../controllers/productController");
+const auth = require("../middleware/firebaseAuth");
 
-router.route("/")
-  .get(getProducts)
-  .post(firebaseAuth, upload.array("images", 5), createProduct);
-
-router.route("/:slug")
-  .get(getProductBySlug);
-
-router.route("/:id")
-  .put(firebaseAuth, upload.array("images", 5), updateProduct)
-  .delete(firebaseAuth, deleteProduct);
+router.get("/", ctrl.getAll);
+router.get("/:slug", ctrl.getOne);
+router.post("/", auth, ctrl.create);    // Admin only
+router.put("/:id", auth, ctrl.update);
+router.delete("/:id", auth, ctrl.remove);
 
 module.exports = router;

@@ -1,38 +1,21 @@
-import { initializeApp, getApps } from "firebase/app";
-import { getAuth } from "firebase/auth";
+// Import the functions you need from the SDKs you need
+import { initializeApp } from "firebase/app";
+import { getAnalytics } from "firebase/analytics";
+// TODO: Add SDKs for Firebase products that you want to use
+// https://firebase.google.com/docs/web/setup#available-libraries
 
+// Your web app's Firebase configuration
+// For Firebase JS SDK v7.20.0 and later, measurementId is optional
 const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || "mock-api-key",
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || "mock-auth-domain.firebaseapp.com",
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || "mock-project-id",
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || "mock-storage-bucket.appspot.com",
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || "000000000000",
-  appId: import.meta.env.VITE_FIREBASE_APP_ID || "1:000000000000:web:0000000000000000000000"
+  apiKey: "AIzaSyClpl8FdJyAeLyPMPIhxLolItBuRg5O53Q",
+  authDomain: "smartnest-99aec.firebaseapp.com",
+  projectId: "smartnest-99aec",
+  storageBucket: "smartnest-99aec.firebasestorage.app",
+  messagingSenderId: "636972263947",
+  appId: "1:636972263947:web:7bb4e8cd491cd2e4eab50e",
+  measurementId: "G-ME0H8LLB73"
 };
 
-let app;
-let auth;
-let isMockFirebase = false;
-
-// Check if actual env variables are provided
-const hasRealConfig = import.meta.env.VITE_FIREBASE_API_KEY && 
-                       import.meta.env.VITE_FIREBASE_API_KEY !== "mock-api-key";
-
-if (hasRealConfig) {
-  try {
-    if (!getApps().length) {
-      app = initializeApp(firebaseConfig);
-    } else {
-      app = getApps()[0];
-    }
-    auth = getAuth(app);
-  } catch (error) {
-    console.error("Firebase initialization failed, falling back to mock auth:", error);
-    isMockFirebase = true;
-  }
-} else {
-  console.warn("Using mock Firebase auth because VITE_FIREBASE_API_KEY is not configured.");
-  isMockFirebase = true;
-}
-
-export { auth, isMockFirebase };
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
+const analytics = getAnalytics(app);

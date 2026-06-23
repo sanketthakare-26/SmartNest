@@ -1,25 +1,14 @@
-import React from "react";
-import useScrollAnimation from "../../hooks/useScrollAnimation";
+import { motion } from "framer-motion";
 
-const AnimatedSection = ({
-  children,
-  animation = "fade-up",
-  delay = 0,
-  duration = 0.8,
-  className = "",
-  tag: Tag = "div",
-  ...props
-}) => {
-  const ref = useScrollAnimation(animation, {
-    delay,
-    duration,
-  });
-
+export default function AnimatedSection({ children, delay = 0 }) {
   return (
-    <Tag ref={ref} className={className} {...props}>
+    <motion.div
+      initial={{ opacity: 0, y: 30 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, amount: 0.2 }}
+      transition={{ duration: 0.5, delay, ease: "easeOut" }}
+    >
       {children}
-    </Tag>
+    </motion.div>
   );
-};
-
-export default AnimatedSection;
+}
