@@ -65,6 +65,11 @@ export const userAuthApi = {
       body: { email, password },
     }),
   me: (token) => request("/api/user/me", { token }),
+  googleAuth: (name, email) =>
+    request("/api/user/google-auth", {
+      method: "POST",
+      body: { name, email },
+    }),
 };
 
 // ─── Products ────────────────────────────────────────────────────────────────

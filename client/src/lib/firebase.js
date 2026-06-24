@@ -1,17 +1,19 @@
 import { initializeApp } from "firebase/app";
-import { getAuth } from "firebase/auth";
+import { getAuth, GoogleAuthProvider, signInWithPopup } from "firebase/auth";
 
 const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || "AIzaSyClpl8FdJyAeLyPMPIhxLolItBuRg5O53Q",
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || "smartnest-99aec.firebaseapp.com",
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || "smartnest-99aec",
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || "smartnest-99aec.firebasestorage.app",
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || "636972263947",
-  appId: import.meta.env.VITE_FIREBASE_APP_ID || "1:636972263947:web:7bb4e8cd491cd2e4eab50e"
+  apiKey: "AIzaSyClpl8FdJyAeLyPMPIhxLolItBuRg5O53Q",
+  authDomain: "smartnest-99aec.firebaseapp.com",
+  projectId: "smartnest-99aec",
+  storageBucket: "smartnest-99aec.firebasestorage.app",
+  messagingSenderId: "636972263947",
+  appId: "1:636972263947:web:1b99bdc649a49fd9eab50e",
+  measurementId: "G-6JM7NNNXLS"
 };
 
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
 
-export { app, auth };
+export const auth = getAuth(app);
+export const googleProvider = new GoogleAuthProvider();
+export { signInWithPopup };

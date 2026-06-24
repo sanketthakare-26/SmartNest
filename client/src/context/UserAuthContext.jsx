@@ -67,6 +67,20 @@ export const UserAuthProvider = ({ children }) => {
     toast.success("Logged out successfully");
   };
 
+  const googleLogin = async (name, email) => {
+    try {
+      const data = await userAuthApi.googleAuth(name, email);
+      setToken(data.token);
+      setUser(data.user);
+      localStorage.setItem("smartnest_user_token", data.token);
+      localStorage.setItem("smartnest_user_data", JSON.stringify(data.user));
+      toast.success(`Welcome, ${data.user.name}!`);
+    } catch (err) {
+      toast.error(err.message || "Google authentication failed");
+      throw err;
+    }
+  };
+
   return (
     <UserAuthContext.Provider
       value={{
@@ -77,6 +91,7 @@ export const UserAuthProvider = ({ children }) => {
         login,
         register,
         logout,
+        googleLogin,
       }}
     >
       {children}

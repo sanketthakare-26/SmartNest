@@ -5,10 +5,11 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useUserAuth } from "../../context/UserAuthContext";
 import logoImg from "@/assets/logo.jpg";
 import { toast } from "sonner";
+import { auth, googleProvider, signInWithPopup } from "../../lib/firebase";
 
 export function AuthModal({ isOpen, onClose, initialTab = "login" }) {
   const [isLogin, setIsLogin] = useState(initialTab === "login");
-  const { login, register } = useUserAuth();
+  const { login, register, googleLogin } = useUserAuth();
   
   // Form states
   const [loginEmail, setLoginEmail] = useState("");
@@ -79,28 +80,20 @@ export function AuthModal({ isOpen, onClose, initialTab = "login" }) {
     }
   };
 
-  // Simulated Google Sign In - registers/logs in a database user seamlessly
+  // Real Firebase Google Sign-In linked to Mongoose Atlas backend
   const handleGoogleSignIn = async () => {
     setLoading(true);
     try {
-      // Simulate typical OAuth delay
-      await new Promise((resolve) => setTimeout(resolve, 800));
-      
-      const googleUser = {
-        name: "Google User",
-        email: "google.user@gmail.com",
-        password: "google_oauth_secret_password_12345"
-      };
-
-      try {
-        await login(googleUser.email, googleUser.password);
-      } catch (loginErr) {
-        // If login failed, register this user dynamically
-        await register(googleUser.name, googleUser.email, googleUser.password);
+      const result = await signInWithPopup(auth, googleProvider);
+      const userObj = result.user;
+      if (!userObj.email) {
+        throw new Error("No email returned from Google Account");
       }
+      await googleLogin(userObj.displayName, userObj.email);
       onClose();
     } catch (err) {
-      toast.error("Google Sign-In failed");
+      console.error(err);
+      toast.error(err.message || "Google Sign-In failed");
     } finally {
       setLoading(false);
     }

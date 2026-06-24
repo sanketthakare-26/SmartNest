@@ -107,4 +107,47 @@ router.get("/me", firebaseAuth, async (req, res) => {
   }
 });
 
+// POST /api/user/google-auth
+router.post("/google-auth", async (req, res) => {
+  try {
+    const { name, email } = req.body;
+    if (!email) {
+      return res.status(400).json({ message: "Email is required" });
+    }
+
+    const emailLower = email.toLowerCase().trim();
+    let user = await User.findOne({ email: emailLower });
+
+    if (!user) {
+      // Create user with a dummy secure password since they authenticate via Google
+      const crypto = require("crypto");
+      const randomPassword = crypto.randomBytes(16).toString("hex");
+      user = new User({
+        name: name || emailLower.split("@")[0],
+        email: emailLower,
+        password: randomPassword,
+      });
+      await user.save();
+    }
+
+    const token = jwt.sign(
+      { id: user._id, email: user.email, name: user.name },
+      JWT_SECRET,
+      { expiresIn: "1d" }
+    );
+
+    res.json({
+      token,
+      user: {
+        id: user._id,
+        email: user.email,
+        name: user.name,
+      },
+    });
+  } catch (err) {
+    console.error("Google auth error:", err);
+    res.status(500).json({ message: "Server error during Google auth" });
+  }
+});
+
 module.exports = router;
