@@ -6,6 +6,8 @@ import {
   categoriesApi,
   brandsApi,
   enquiriesApi,
+  schedulesApi,
+  appointmentsApi,
 } from "../../lib/api";
 import {
   products as staticProducts,
@@ -26,8 +28,16 @@ import {
   X,
   Clock,
   Eye,
+  CalendarDays,
+  CalendarClock,
+  Phone,
+  MapPin,
+  CheckCircle2,
+  XCircle,
+  Loader2,
 } from "lucide-react";
 import { toast } from "sonner";
+import logoImg from "../../assets/logo.jpg";
 
 export function Dashboard() {
   const { token, isAuthenticated, logout, loading: authLoading } = useAuth();
@@ -48,12 +58,15 @@ export function Dashboard() {
   const [categories, setCategories] = useState([]);
   const [brands, setBrands] = useState([]);
   const [enquiries, setEnquiries] = useState([]);
+  const [schedules, setSchedules] = useState([]);
+  const [appointments, setAppointments] = useState([]);
   const [loading, setLoading] = useState(true);
 
   // Form States (for creating/updating)
   const [isEditing, setIsEditing] = useState(null); // ID of element being edited, or "new"
   const [productForm, setProductForm] = useState({
     name: "",
+    price: "",
     description: "",
     shortDescription: "",
     categorySlug: "",
@@ -136,6 +149,20 @@ export function Dashboard() {
             setEnquiries(initialMock);
           }
         }
+
+        try {
+          const schData = await schedulesApi.getAll(token);
+          setSchedules(schData.schedules || []);
+        } catch {
+          setSchedules([]);
+        }
+
+        try {
+          const apptData = await appointmentsApi.getAll(token);
+          setAppointments(apptData.appointments || []);
+        } catch {
+          setAppointments([]);
+        }
       }
     } catch (err) {
       console.error(err);
@@ -195,7 +222,7 @@ export function Dashboard() {
     formData.append("name", productForm.name);
     formData.append("description", productForm.description);
     formData.append("shortDescription", productForm.shortDescription);
-    formData.append("price", 199); // default required price
+    formData.append("price", productForm.price ? Number(productForm.price) : 0);
 
     if (categoryObj) {
       formData.append("category", categoryObj._id);
@@ -264,6 +291,7 @@ export function Dashboard() {
 
     setProductForm({
       name: prod.name,
+      price: prod.price ? String(prod.price) : "",
       description: prod.description || prod.shortDescription || "",
       shortDescription: prod.shortDescription || "",
       categorySlug: categorySlug,
@@ -279,6 +307,7 @@ export function Dashboard() {
     setIsEditing("new");
     setProductForm({
       name: "",
+      price: "",
       description: "",
       shortDescription: "",
       categorySlug: categories[0]?.slug || "cctv-surveillance",
@@ -352,9 +381,14 @@ export function Dashboard() {
     <div className="min-h-screen bg-secondary/15 flex flex-col md:flex-row">
       {/* Side Menu */}
       <aside className="w-full md:w-64 bg-card border-r border-border flex flex-col shrink-0">
-        <div className="p-6 border-b border-border flex items-center justify-between">
+        <div className="p-5 border-b border-border flex items-center gap-3">
+          <img
+            src={logoImg}
+            alt="SmartNest Logo"
+            className="h-9 w-9 rounded-xl object-cover shadow-soft shrink-0"
+          />
           <div>
-            <h2 className="font-extrabold text-base tracking-tight">SmartNest Admin</h2>
+            <h2 className="font-extrabold text-base tracking-tight leading-tight">SmartNest Admin</h2>
             <p className="text-xs text-muted-foreground">Management Console</p>
           </div>
         </div>
@@ -384,6 +418,19 @@ export function Dashboard() {
             icon={MessageSquare}
             label="Enquiries"
             badgeCount={enquiries.filter((e) => e.status === "Pending").length}
+          />
+          <TabButton
+            active={activeTab === "schedules"}
+            onClick={() => { setActiveTab("schedules"); setIsEditing(null); }}
+            icon={CalendarDays}
+            label="Schedules"
+          />
+          <TabButton
+            active={activeTab === "appointments"}
+            onClick={() => { setActiveTab("appointments"); setIsEditing(null); }}
+            icon={CalendarClock}
+            label="Appointments"
+            badgeCount={appointments.filter((a) => a.status === "Pending").length}
           />
         </nav>
 
@@ -432,6 +479,7 @@ export function Dashboard() {
                             <th className="px-6 py-3.5">Name</th>
                             <th className="px-6 py-3.5">Brand</th>
                             <th className="px-6 py-3.5">Category</th>
+                            <th className="px-6 py-3.5">Price</th>
                             <th className="px-6 py-3.5">Tag</th>
                             <th className="px-6 py-3.5 text-right">Actions</th>
                           </tr>
@@ -448,6 +496,9 @@ export function Dashboard() {
                               </td>
                               <td className="px-6 py-3 text-muted-foreground">
                                 {p.category?.name || categories.find((c) => c.slug === p.categorySlug || c._id === p.category)?.name || p.categorySlug}
+                              </td>
+                              <td className="px-6 py-3 font-medium text-foreground">
+                                {p.price > 0 ? `₹${Number(p.price).toLocaleString("en-IN")}` : "—"}
                               </td>
                               <td className="px-6 py-3">
                                 {p.tag && <span className="rounded-full bg-secondary px-2.5 py-0.5 text-xs font-semibold">{p.tag}</span>}
@@ -486,6 +537,21 @@ export function Dashboard() {
                         <div className="space-y-1">
                           <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Product Name</label>
                           <input required value={productForm.name} onChange={(e) => setProductForm({ ...productForm, name: e.target.value })} className="h-11 w-full rounded-xl border border-border bg-background px-3.5 text-sm outline-none focus:border-primary" />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Price (₹ Rupees)</label>
+                          <div className="relative">
+                            <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm font-bold text-muted-foreground select-none">₹</span>
+                            <input
+                              type="number"
+                              min="0"
+                              step="1"
+                              value={productForm.price}
+                              onChange={(e) => setProductForm({ ...productForm, price: e.target.value })}
+                              placeholder="e.g. 4999"
+                              className="h-11 w-full rounded-xl border border-border bg-background pl-8 pr-3.5 text-sm outline-none focus:border-primary"
+                            />
+                          </div>
                         </div>
                         <div className="space-y-1">
                           <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Product Tag</label>
@@ -715,9 +781,304 @@ export function Dashboard() {
                 </div>
               </div>
             )}
+
+            {/* ── Schedules Tab ── */}
+            {activeTab === "schedules" && (
+              <SchedulesTab schedules={schedules} token={token} onRefresh={loadAllData} />
+            )}
+
+            {/* ── Appointments Tab ── */}
+            {activeTab === "appointments" && (
+              <AppointmentsTab appointments={appointments} token={token} onRefresh={loadAllData} />
+            )}
           </div>
         )}
       </main>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Schedules Tab
+// ─────────────────────────────────────────────────────────────────────────────
+const DAYS_OF_WEEK = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+
+function SchedulesTab({ schedules, token, onRefresh }) {
+  const [saving, setSaving] = useState(false);
+  const [form, setForm] = useState({
+    dayOfWeek: "",
+    startTime: "",
+    endTime: "",
+    slotDuration: 30,
+    isActive: true,
+  });
+
+  const handleAdd = async (e) => {
+    e.preventDefault();
+    if (!form.dayOfWeek || !form.startTime || !form.endTime) return;
+    setSaving(true);
+    try {
+      await schedulesApi.create(form, token);
+      toast.success("Schedule slot added!");
+      setForm({ dayOfWeek: "", startTime: "", endTime: "", slotDuration: 30, isActive: true });
+      await onRefresh();
+    } catch (err) {
+      toast.error(err?.message || "Failed to add schedule");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDelete = async (id) => {
+    if (!window.confirm("Remove this schedule slot?")) return;
+    try {
+      await schedulesApi.delete(id, token);
+      toast.success("Schedule removed");
+      await onRefresh();
+    } catch (err) {
+      toast.error(err?.message || "Failed to delete schedule");
+    }
+  };
+
+  const handleToggle = async (id, isActive) => {
+    try {
+      await schedulesApi.update(id, { isActive: !isActive }, token);
+      toast.success(isActive ? "Schedule disabled" : "Schedule enabled");
+      await onRefresh();
+    } catch (err) {
+      toast.error("Failed to update schedule");
+    }
+  };
+
+  return (
+    <div>
+      <div className="mb-8">
+        <h1 className="text-2xl font-extrabold tracking-tight">Consultancy Schedules</h1>
+        <p className="text-sm text-muted-foreground mt-1">Manage weekly recurring availability slots for customer bookings.</p>
+      </div>
+
+      {/* Add Form */}
+      <div className="rounded-2xl border border-border bg-card p-6 mb-8 shadow-sm">
+        <h2 className="text-base font-bold mb-5 flex items-center gap-2"><Plus className="h-4 w-4 text-primary" /> Add Recurring Slot</h2>
+        <form onSubmit={handleAdd} className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5 items-end">
+          <div>
+            <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">Day of Week *</label>
+            <select
+              value={form.dayOfWeek}
+              onChange={e => setForm(f => ({ ...f, dayOfWeek: e.target.value }))}
+              className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm outline-none focus:border-primary"
+              required
+            >
+              <option value="">Select day</option>
+              {DAYS_OF_WEEK.map(d => <option key={d} value={d}>{d}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">Start Time *</label>
+            <input type="time" value={form.startTime}
+              onChange={e => setForm(f => ({ ...f, startTime: e.target.value }))}
+              className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm outline-none focus:border-primary" required />
+          </div>
+          <div>
+            <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">End Time *</label>
+            <input type="time" value={form.endTime}
+              onChange={e => setForm(f => ({ ...f, endTime: e.target.value }))}
+              className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm outline-none focus:border-primary" required />
+          </div>
+          <div>
+            <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">Slot (mins)</label>
+            <input type="number" min="15" max="120" step="15" value={form.slotDuration}
+              onChange={e => setForm(f => ({ ...f, slotDuration: Number(e.target.value) }))}
+              className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm outline-none focus:border-primary" />
+          </div>
+          <button
+            type="submit"
+            disabled={saving}
+            className="flex h-10 items-center justify-center gap-2 rounded-xl bg-foreground px-5 text-sm font-bold text-background hover:opacity-90 transition active:scale-95 disabled:opacity-60"
+          >
+            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+            Add Slot
+          </button>
+        </form>
+      </div>
+
+      {/* Schedule List */}
+      <div className="rounded-2xl border border-border bg-card shadow-sm overflow-hidden">
+        <div className="px-6 py-4 border-b border-border flex items-center gap-3">
+          <CalendarDays className="h-4 w-4 text-primary" />
+          <span className="font-bold text-sm">Weekly Schedule ({schedules.length} slots)</span>
+        </div>
+        {schedules.length === 0 ? (
+          <div className="px-6 py-16 text-center">
+            <CalendarDays className="h-12 w-12 text-muted-foreground/30 mx-auto mb-3" />
+            <p className="text-sm font-semibold text-muted-foreground">No schedule slots yet.</p>
+            <p className="text-xs text-muted-foreground mt-1">Add your first recurring slot above to start accepting bookings.</p>
+          </div>
+        ) : (
+          <div className="divide-y divide-border">
+            {DAYS_OF_WEEK.map(day => {
+              const daySlots = schedules.filter(s => s.dayOfWeek === day);
+              if (daySlots.length === 0) return null;
+              return (
+                <div key={day} className="px-6 py-4">
+                  <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-3">{day}</p>
+                  <div className="flex flex-wrap gap-3">
+                    {daySlots.map(slot => (
+                      <div key={slot._id} className={`inline-flex items-center gap-3 rounded-2xl border px-4 py-2.5 text-sm transition ${slot.isActive ? "border-border bg-secondary/40" : "border-dashed border-border/60 bg-secondary/20 opacity-60"}`}>
+                        <Clock className="h-3.5 w-3.5 text-primary shrink-0" />
+                        <span className="font-semibold text-foreground">{slot.startTime} – {slot.endTime}</span>
+                        <span className="text-xs text-muted-foreground">({slot.slotDuration}m)</span>
+                        <button
+                          onClick={() => handleToggle(slot._id, slot.isActive)}
+                          title={slot.isActive ? "Disable slot" : "Enable slot"}
+                          className={`p-1 rounded-lg transition ${slot.isActive ? "text-emerald-500 hover:bg-emerald-50" : "text-muted-foreground hover:bg-secondary"}`}
+                        >
+                          {slot.isActive ? <CheckCircle2 className="h-4 w-4" /> : <XCircle className="h-4 w-4" />}
+                        </button>
+                        <button onClick={() => handleDelete(slot._id)} className="p-1 rounded-lg text-destructive hover:bg-destructive/10 transition">
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Appointments Tab
+// ─────────────────────────────────────────────────────────────────────────────
+function AppointmentsTab({ appointments, token, onRefresh }) {
+  const [filter, setFilter] = useState("all");
+
+  const filtered = filter === "all" ? appointments : appointments.filter(a => a.status === filter);
+
+  const updateStatus = async (id, status) => {
+    try {
+      await appointmentsApi.updateStatus(id, status, token);
+      toast.success("Appointment updated");
+      await onRefresh();
+    } catch (err) {
+      toast.error(err?.message || "Failed to update status");
+    }
+  };
+
+  const handleDelete = async (id) => {
+    if (!window.confirm("Delete this appointment?")) return;
+    try {
+      await appointmentsApi.delete(id, token);
+      toast.success("Appointment deleted");
+      await onRefresh();
+    } catch (err) {
+      toast.error("Failed to delete appointment");
+    }
+  };
+
+  const statusColor = (s) => {
+    if (s === "Confirmed") return "bg-mint-soft text-foreground";
+    if (s === "Completed") return "bg-blue-50 text-blue-700";
+    if (s === "Cancelled") return "bg-destructive/10 text-destructive";
+    return "bg-amber-soft text-foreground";
+  };
+
+  const pending = appointments.filter(a => a.status === "Pending").length;
+
+  return (
+    <div>
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-extrabold tracking-tight">Appointments</h1>
+          <p className="text-sm text-muted-foreground mt-1">{appointments.length} total · {pending} pending</p>
+        </div>
+        <div className="flex gap-2 flex-wrap">
+          {["all", "Pending", "Confirmed", "Completed", "Cancelled"].map(f => (
+            <button
+              key={f}
+              onClick={() => setFilter(f)}
+              className={`rounded-full px-4 py-1.5 text-xs font-bold transition capitalize ${filter === f ? "bg-foreground text-background" : "bg-secondary text-foreground hover:bg-secondary/70"}`}
+            >
+              {f}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="rounded-2xl border border-border bg-card shadow-sm overflow-hidden">
+        {filtered.length === 0 ? (
+          <div className="px-6 py-16 text-center">
+            <CalendarClock className="h-12 w-12 text-muted-foreground/30 mx-auto mb-3" />
+            <p className="text-sm font-semibold text-muted-foreground">No appointments found</p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="min-w-full text-sm">
+              <thead className="border-b border-border bg-secondary/20 text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                <tr>
+                  <th className="px-6 py-3.5 text-left">Customer</th>
+                  <th className="px-6 py-3.5 text-left">Type</th>
+                  <th className="px-6 py-3.5 text-left">Date & Time</th>
+                  <th className="px-6 py-3.5 text-left">Product</th>
+                  <th className="px-6 py-3.5 text-left">Status</th>
+                  <th className="px-6 py-3.5 text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.map(appt => (
+                  <tr key={appt._id} className="border-b border-border last:border-0 hover:bg-secondary/10 transition-colors">
+                    <td className="px-6 py-4">
+                      <div className="font-semibold text-foreground">{appt.name}</div>
+                      <div className="text-xs text-muted-foreground">{appt.email}</div>
+                      <div className="text-xs text-muted-foreground">{appt.phone}</div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="inline-flex items-center gap-1.5 rounded-full bg-secondary/60 px-3 py-1 text-xs font-semibold">
+                        {appt.consultancyType === "Phone Call"
+                          ? <Phone className="h-3 w-3 text-blue-500" />
+                          : <MapPin className="h-3 w-3 text-emerald-500" />}
+                        {appt.consultancyType}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="font-semibold text-foreground">
+                        {new Date(appt.date + "T00:00:00").toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
+                      </div>
+                      <div className="text-xs text-primary font-bold">{appt.timeSlot}</div>
+                    </td>
+                    <td className="px-6 py-4 text-xs text-muted-foreground max-w-[160px] truncate">{appt.productName || "—"}</td>
+                    <td className="px-6 py-4">
+                      <select
+                        value={appt.status || "Pending"}
+                        onChange={e => updateStatus(appt._id, e.target.value)}
+                        className={`rounded-full px-2.5 py-1 text-xs font-semibold outline-none border border-border cursor-pointer ${statusColor(appt.status)}`}
+                      >
+                        <option value="Pending">Pending</option>
+                        <option value="Confirmed">Confirmed</option>
+                        <option value="Completed">Completed</option>
+                        <option value="Cancelled">Cancelled</option>
+                      </select>
+                    </td>
+                    <td className="px-6 py-4 text-right">
+                      <button
+                        onClick={() => handleDelete(appt._id)}
+                        className="p-2 text-destructive hover:bg-destructive/10 rounded-xl transition"
+                        title="Delete"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

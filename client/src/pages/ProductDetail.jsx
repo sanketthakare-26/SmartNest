@@ -1,12 +1,13 @@
-import { useEffect } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useParams, Link } from "react-router-dom";
-import { ArrowLeft, Check, MessageCircle, Phone, ShieldCheck, ShoppingCart, Heart } from "lucide-react";
+import { ArrowLeft, Check, MessageCircle, CalendarDays, ShieldCheck, ShoppingCart, Heart, ChevronLeft, ChevronRight } from "lucide-react";
 import { useStore } from "../context/StoreContext";
 import { useCart } from "../context/CartContext";
-import { whatsappLink, PHONE_NUMBER } from "../lib/data";
+import { whatsappLink } from "../lib/data";
 import { ProductCard } from "../components/product/ProductCard";
 import { ProductGallery } from "../components/product/ProductGallery";
 import { SpecTable } from "../components/product/SpecTable";
+import { BookingModal } from "../components/product/BookingModal";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 
@@ -68,10 +69,25 @@ function MobileCartWishlistButtons({ product }) {
   );
 }
 
+
 export function ProductDetail() {
   const { getProduct, getCategory, brands, products } = useStore();
   const { slug } = useParams();
   const product = getProduct(slug);
+  const [bookingOpen, setBookingOpen] = useState(false);
+  const scrollContainerRef = useRef(null);
+
+  const scrollLeft = () => {
+    if (scrollContainerRef.current) {
+      scrollContainerRef.current.scrollBy({ left: -320, behavior: "smooth" });
+    }
+  };
+
+  const scrollRight = () => {
+    if (scrollContainerRef.current) {
+      scrollContainerRef.current.scrollBy({ left: 320, behavior: "smooth" });
+    }
+  };
 
   useEffect(() => {
     if (product) {
@@ -95,7 +111,7 @@ export function ProductDetail() {
 
   const category = getCategory(product.categorySlug);
   const brand = brands.find((b) => b.slug === product.brand);
-  const related = products.filter((p) => p.categorySlug === product.categorySlug && p.id !== product.id).slice(0, 4);
+  const related = products.filter((p) => p.categorySlug === product.categorySlug && p.id !== product.id);
 
   const msg = `Hi SmartNest, I'd like to enquire about the ${product.name}.`;
 
@@ -122,6 +138,14 @@ export function ProductDetail() {
               {product.tag && <span className="rounded-full bg-mint-soft px-3 py-1 text-foreground">{product.tag}</span>}
             </div>
             <h1 className="mt-4 text-3xl font-extrabold tracking-tight sm:text-4xl">{product.name}</h1>
+            {product.price > 0 && (
+              <div className="mt-3 flex items-baseline gap-2">
+                <span className="text-2xl font-extrabold text-primary">
+                  ₹{Number(product.price).toLocaleString("en-IN")}
+                </span>
+                <span className="text-sm text-muted-foreground font-medium">onwards (incl. installation)</span>
+              </div>
+            )}
             <p className="mt-3 text-base text-muted-foreground leading-relaxed">{product.shortDescription}</p>
 
             <ul className="mt-6 space-y-2">
@@ -135,7 +159,7 @@ export function ProductDetail() {
             {/* ── Add to Cart + Wishlist (desktop) ── */}
             <CartWishlistButtons product={product} />
 
-            {/* ── Enquiry buttons (desktop) ── */}
+            {/* ── Action buttons (desktop) ── */}
             <div className="mt-4 hidden flex-wrap gap-3 sm:flex">
               <a
                 href={whatsappLink(msg)}
@@ -150,12 +174,13 @@ export function ProductDetail() {
                 />
                 <MessageCircle className="h-4 w-4 transition-transform group-hover:scale-110" /> Send Enquiry
               </a>
-              <a
-                href={`tel:${PHONE_NUMBER.replace(/\s/g, "")}`}
-                className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-7 py-3.5 text-sm font-semibold text-foreground hover:bg-secondary transition"
+              {/* Book Consultancy replaces "Call us" */}
+              <button
+                onClick={() => setBookingOpen(true)}
+                className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/5 px-7 py-3.5 text-sm font-semibold text-primary hover:bg-primary/10 transition active:scale-[0.98]"
               >
-                <Phone className="h-4 w-4" /> Call us
-              </a>
+                <CalendarDays className="h-4 w-4" /> Book Consultancy
+              </button>
             </div>
 
             {/* Specifications Table */}
@@ -167,38 +192,86 @@ export function ProductDetail() {
           </div>
         </div>
 
-        {/* Related */}
+        {/* Related Products Carousel (shown at the bottom for all screen sizes) */}
         {related.length > 0 && (
-          <section className="mt-20">
-            <h2 className="text-2xl font-extrabold tracking-tight sm:text-3xl">You may also like</h2>
-            <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-6 lg:grid-cols-4">
-              {related.map((p, i) => (
-                <ProductCard key={p.id} product={p} index={i} />
-              ))}
+          <section className="mt-20 border-t border-border pt-12">
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h2 className="text-2xl font-extrabold tracking-tight sm:text-3xl text-foreground">
+                  Similar Products
+                </h2>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Explore other options in this category
+                </p>
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={scrollLeft}
+                  className="grid h-10 w-10 place-items-center rounded-full border border-border bg-card text-foreground shadow-soft transition hover:bg-secondary active:scale-95 cursor-pointer"
+                  aria-label="Previous products"
+                >
+                  <ChevronLeft className="h-5 w-5" />
+                </button>
+                <button
+                  onClick={scrollRight}
+                  className="grid h-10 w-10 place-items-center rounded-full border border-border bg-card text-foreground shadow-soft transition hover:bg-secondary active:scale-95 cursor-pointer"
+                  aria-label="Next products"
+                >
+                  <ChevronRight className="h-5 w-5" />
+                </button>
+              </div>
+            </div>
+
+            <div className="relative">
+              <div
+                ref={scrollContainerRef}
+                className="flex gap-6 overflow-x-auto pb-6 pt-2 px-1 snap-x scroll-smooth scrollbar-none"
+              >
+                {related.map((p, i) => (
+                  <div key={p.id} className="w-[280px] shrink-0 snap-start">
+                    <ProductCard product={p} index={i} />
+                  </div>
+                ))}
+              </div>
             </div>
           </section>
         )}
       </div>
 
-      {/* ── Mobile sticky bar: cart + wishlist + enquire ── */}
+      {/* ── Mobile sticky bar: cart + wishlist + enquire + book ── */}
       <div className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-background/95 p-3 backdrop-blur sm:hidden">
         <div className="flex items-center gap-2">
           <MobileCartWishlistButtons product={product} />
+          {/* WhatsApp */}
           <a
             href={whatsappLink(msg)}
             target="_blank"
             rel="noreferrer"
-            className="relative overflow-hidden flex flex-1 items-center justify-center gap-2 rounded-full bg-primary py-3.5 text-sm font-semibold text-primary-foreground shadow-soft"
+            className="relative overflow-hidden flex flex-1 items-center justify-center gap-1.5 rounded-full bg-primary py-3 text-xs font-semibold text-primary-foreground shadow-soft"
           >
             <motion.span
               className="absolute inset-0 rounded-full bg-white opacity-10"
               animate={{ scale: [1, 1.5], opacity: [0.3, 0] }}
               transition={{ repeat: Infinity, duration: 1.5, ease: "easeOut" }}
             />
-            <MessageCircle className="h-4 w-4" /> Send Enquiry
+            <MessageCircle className="h-3.5 w-3.5" /> Enquiry
           </a>
+          {/* Book Consultancy */}
+          <button
+            onClick={() => setBookingOpen(true)}
+            className="flex flex-1 items-center justify-center gap-1.5 rounded-full border border-primary/30 bg-primary/5 py-3 text-xs font-semibold text-primary transition hover:bg-primary/10 active:scale-95"
+          >
+            <CalendarDays className="h-3.5 w-3.5" /> Book
+          </button>
         </div>
       </div>
+
+      {/* Booking Modal */}
+      <BookingModal
+        isOpen={bookingOpen}
+        onClose={() => setBookingOpen(false)}
+        product={product}
+      />
     </div>
   );
 }

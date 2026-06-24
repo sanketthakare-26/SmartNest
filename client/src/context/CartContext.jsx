@@ -39,6 +39,17 @@ export function CartProvider({ children }) {
     toast.success("Removed from cart");
   }, []);
 
+  const updateCartQty = useCallback((id, qty) => {
+    if (qty <= 0) {
+      setCart((prev) => prev.filter((p) => p.id !== id));
+      toast.success("Removed from cart");
+      return;
+    }
+    setCart((prev) =>
+      prev.map((p) => (p.id === id ? { ...p, qty } : p))
+    );
+  }, []);
+
   const clearCart = useCallback(() => { setCart([]); }, []);
 
   const cartCount = cart.reduce((sum, p) => sum + p.qty, 0);
@@ -66,7 +77,7 @@ export function CartProvider({ children }) {
 
   return (
     <CartContext.Provider value={{
-      cart, addToCart, removeFromCart, clearCart, cartCount,
+      cart, addToCart, removeFromCart, updateCartQty, clearCart, cartCount,
       wishlist, toggleWishlist, isWishlisted, wishlistCount,
     }}>
       {children}

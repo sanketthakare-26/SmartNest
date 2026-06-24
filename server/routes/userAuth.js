@@ -3,6 +3,7 @@ const router = express.Router();
 const jwt = require("jsonwebtoken");
 const User = require("../models/User");
 const firebaseAuth = require("../middleware/firebaseAuth"); // Note: this is actually standard JWT verification middleware
+const { sendLoginEmail, sendResetOTPEmail } = require("../config/mailer");
 
 const JWT_SECRET = process.env.JWT_SECRET || "smartnest_secret_key_12345";
 
@@ -72,6 +73,11 @@ router.post("/login", async (req, res) => {
       { expiresIn: "1d" }
     );
 
+    // Send login success email in the background
+    sendLoginEmail(user.email, user.name).catch((err) =>
+      console.error("Error sending login email in background:", err)
+    );
+
     res.json({
       token,
       user: {
@@ -136,6 +142,11 @@ router.post("/google-auth", async (req, res) => {
       { expiresIn: "1d" }
     );
 
+    // Send login success email in the background
+    sendLoginEmail(user.email, user.name).catch((err) =>
+      console.error("Error sending login email in background:", err)
+    );
+
     res.json({
       token,
       user: {
@@ -147,6 +158,70 @@ router.post("/google-auth", async (req, res) => {
   } catch (err) {
     console.error("Google auth error:", err);
     res.status(500).json({ message: "Server error during Google auth" });
+  }
+});
+
+// POST /api/user/forgot-password
+router.post("/forgot-password", async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email) {
+      return res.status(400).json({ message: "Email is required" });
+    }
+
+    const emailLower = email.toLowerCase().trim();
+    const user = await User.findOne({ email: emailLower });
+    if (!user) {
+      return res.status(404).json({ message: "No user found with this email" });
+    }
+
+    // Generate 6-digit OTP code
+    const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+    user.resetPasswordOTP = otpCode;
+    user.resetPasswordOTPExpires = Date.now() + 10 * 60 * 1000; // 10 minutes
+    await user.save();
+
+    // Send OTP email in the background
+    sendResetOTPEmail(user.email, user.name, otpCode).catch((err) =>
+      console.error("Error sending reset OTP email in background:", err)
+    );
+
+    res.json({ message: "Verification code (OTP) sent to your email" });
+  } catch (err) {
+    console.error("Forgot password error:", err);
+    res.status(500).json({ message: "Server error during forgot password" });
+  }
+});
+
+// POST /api/user/reset-password
+router.post("/reset-password", async (req, res) => {
+  try {
+    const { email, otp, newPassword } = req.body;
+    if (!email || !otp || !newPassword) {
+      return res.status(400).json({ message: "Email, OTP and new password are required" });
+    }
+
+    const emailLower = email.toLowerCase().trim();
+    const user = await User.findOne({
+      email: emailLower,
+      resetPasswordOTP: otp,
+      resetPasswordOTPExpires: { $gt: Date.now() },
+    });
+
+    if (!user) {
+      return res.status(400).json({ message: "Invalid or expired verification code (OTP)" });
+    }
+
+    // Update password and clear OTP fields
+    user.password = newPassword;
+    user.resetPasswordOTP = null;
+    user.resetPasswordOTPExpires = null;
+    await user.save();
+
+    res.json({ message: "Password reset successfully" });
+  } catch (err) {
+    console.error("Reset password error:", err);
+    res.status(500).json({ message: "Server error during password reset" });
   }
 });
 

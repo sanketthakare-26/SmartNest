@@ -1,8 +1,10 @@
-import { useEffect, useMemo, useState } from "react";
-import { Search, X } from "lucide-react";
+import { useEffect, useMemo, useState, useRef } from "react";
+import { Search, X, ChevronDown, Check } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
 import { useStore } from "../context/StoreContext";
 import { ProductCard } from "../components/product/ProductCard";
+import { motion, AnimatePresence } from "framer-motion";
+import { cn } from "@/lib/utils";
 
 export function Products() {
   const { products, categories, brands } = useStore();
@@ -54,8 +56,8 @@ export function Products() {
         <p className="max-w-xl text-muted-foreground">Filter and search across {products.length}+ smart home products from {brands.length} brands.</p>
       </div>
 
-      <div className="mt-6 flex flex-col gap-3">
-        <div className="relative">
+      <div className="mt-6 flex flex-col gap-4 md:flex-row md:items-center">
+        <div className="relative flex-1">
           <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <input
             value={q}
@@ -65,11 +67,39 @@ export function Products() {
           />
         </div>
 
-        <FilterRow label="Category" active={cat} onClear={() => setCat(null)} items={categories.map((c) => ({ key: c.slug, label: c.name }))} onPick={setCat} />
-        <FilterRow label="Brand" active={brand} onClear={() => setBrand(null)} items={brands.map((b) => ({ key: b.slug, label: b.name }))} onPick={setBrand} />
+        <div className="flex flex-wrap gap-2">
+          <FilterDropdown
+            label="Category"
+            active={cat}
+            onClear={() => setCat(null)}
+            items={categories.map((c) => ({ key: c.slug, label: c.name }))}
+            onPick={setCat}
+            placeholder="All Categories"
+          />
+          <FilterDropdown
+            label="Brand"
+            active={brand}
+            onClear={() => setBrand(null)}
+            items={brands.map((b) => ({ key: b.slug, label: b.name }))}
+            onPick={setBrand}
+            placeholder="All Brands"
+          />
+          {(cat || brand || q.trim()) && (
+            <button
+              onClick={() => {
+                handleSearchChange("");
+                setCat(null);
+                setBrand(null);
+              }}
+              className="inline-flex h-12 items-center justify-center gap-1.5 rounded-full border border-dashed border-destructive/30 px-5 text-sm font-semibold text-destructive hover:bg-destructive/10 transition active:scale-95"
+            >
+              Clear Filters <X className="h-4 w-4" />
+            </button>
+          )}
+        </div>
       </div>
 
-      <div className="mt-3 text-sm text-muted-foreground">{filtered.length} result{filtered.length !== 1 && "s"}</div>
+      <div className="mt-4 text-sm text-muted-foreground">{filtered.length} result{filtered.length !== 1 && "s"}</div>
 
       <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-6 lg:grid-cols-4">
         {filtered.map((p, i) => (
@@ -86,7 +116,7 @@ export function Products() {
               setCat(null);
               setBrand(null);
             }}
-            className="mt-4 inline-flex rounded-full bg-foreground px-5 py-2 text-sm font-semibold text-background"
+            className="mt-4 inline-flex rounded-full bg-foreground px-5 py-2 text-sm font-semibold text-background shadow-soft hover:opacity-90 transition"
           >
             Clear filters
           </button>
@@ -96,28 +126,79 @@ export function Products() {
   );
 }
 
-function FilterRow({ label, active, onClear, items, onPick }) {
+function FilterDropdown({ label, active, onClear, items, onPick, placeholder }) {
+  const [isOpen, setIsOpen] = useState(false);
+  const dropdownRef = useRef(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const activeItem = items.find((it) => it.key === active);
+
   return (
-    <div className="flex items-start gap-3">
-      <div className="mt-2 hidden w-20 shrink-0 text-xs font-bold uppercase tracking-wider text-muted-foreground sm:block">{label}</div>
-      <div className="flex flex-1 flex-wrap gap-2">
-        <button
-          onClick={onClear}
-          className={`rounded-full px-3.5 py-1.5 text-xs font-semibold transition ${!active ? "bg-foreground text-background" : "border border-border bg-card text-foreground/70 hover:bg-secondary"}`}
-        >
-          All
-        </button>
-        {items.map((it) => (
-          <button
-            key={it.key}
-            onClick={() => onPick(it.key)}
-            className={`rounded-full px-3.5 py-1.5 text-xs font-semibold transition ${active === it.key ? "bg-foreground text-background" : "border border-border bg-card text-foreground/70 hover:bg-secondary"}`}
+    <div className="relative" ref={dropdownRef}>
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        className={cn(
+          "inline-flex h-12 items-center justify-between gap-2 rounded-full border px-5 text-sm font-semibold shadow-card transition-all active:scale-95",
+          active
+            ? "border-primary bg-primary text-primary-foreground"
+            : "border-border bg-card text-foreground hover:bg-secondary"
+        )}
+      >
+        <span>{activeItem ? activeItem.label : placeholder}</span>
+        <ChevronDown className={cn("h-4 w-4 transition-transform duration-200", isOpen && "rotate-180")} />
+      </button>
+
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            initial={{ opacity: 0, y: 8, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 8, scale: 0.95 }}
+            transition={{ duration: 0.15 }}
+            className="absolute left-0 mt-2 z-30 max-h-72 w-64 overflow-y-auto rounded-2xl border border-border bg-card p-1 shadow-lift scrollbar-thin"
           >
-            {it.label}
-            {active === it.key && <X className="ml-1 inline h-3 w-3" />}
-          </button>
-        ))}
-      </div>
+            <button
+              onClick={() => {
+                onClear();
+                setIsOpen(false);
+              }}
+              className={cn(
+                "flex w-full items-center justify-between rounded-xl px-4 py-2.5 text-left text-sm transition-colors",
+                !active ? "bg-secondary font-bold text-foreground" : "text-foreground/85 hover:bg-secondary/40 hover:text-foreground"
+              )}
+            >
+              <span>All {label}s</span>
+              {!active && <Check className="h-4 w-4 text-primary" />}
+            </button>
+            <div className="h-px bg-border my-1" />
+            {items.map((it) => (
+              <button
+                key={it.key}
+                onClick={() => {
+                  onPick(it.key);
+                  setIsOpen(false);
+                }}
+                className={cn(
+                  "flex w-full items-center justify-between rounded-xl px-4 py-2.5 text-left text-sm transition-colors",
+                  active === it.key ? "bg-secondary font-bold text-foreground" : "text-foreground/85 hover:bg-secondary/40 hover:text-foreground"
+                )}
+              >
+                <span className="truncate">{it.label}</span>
+                {active === it.key && <Check className="h-4 w-4 text-primary" />}
+              </button>
+            ))}
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

@@ -21,8 +21,6 @@ export function Navbar() {
   const [open, setOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [cartOpen, setCartOpen] = useState(false);
-  const [wishlistOpen, setWishlistOpen] = useState(false);
   const [accountOpen, setAccountOpen] = useState(false);
 
   // Auth modal state
@@ -68,10 +66,7 @@ export function Navbar() {
     if (searchOpen && searchRef.current) searchRef.current.focus();
   }, [searchOpen]);
 
-  // Close dropdowns on route change
   useEffect(() => {
-    setCartOpen(false);
-    setWishlistOpen(false);
     setAccountOpen(false);
     setSearchOpen(false);
     setOpen(false);
@@ -300,10 +295,10 @@ export function Navbar() {
 
           {/* ── Wishlist Icon ──────────────────────────────────── */}
           <div className="relative ml-1">
-            <button
+            <Link
+              to="/wishlist"
               id="wishlist-btn"
               aria-label="Wishlist"
-              onClick={() => { setWishlistOpen((v) => !v); setCartOpen(false); setAccountOpen(false); }}
               className="relative grid h-9 w-9 place-items-center rounded-full border border-border bg-card text-foreground/70 hover:text-foreground hover:bg-secondary transition active:scale-95"
             >
               <Heart className={cn("h-4 w-4 transition", wishlistCount > 0 && "fill-rose-500 text-rose-500")} />
@@ -312,67 +307,15 @@ export function Navbar() {
                   {wishlistCount}
                 </span>
               )}
-            </button>
-
-            <AnimatePresence>
-              {wishlistOpen && (
-                <motion.div
-                  initial={{ opacity: 0, y: 8, scale: 0.96 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={{ opacity: 0, y: 8, scale: 0.96 }}
-                  transition={{ duration: 0.15 }}
-                  className="absolute right-0 top-12 w-72 rounded-2xl border border-border bg-card shadow-lift overflow-hidden"
-                >
-                  <div className="p-4 border-b border-border">
-                    <p className="font-semibold text-sm">Wishlist ({wishlistCount})</p>
-                  </div>
-                  {wishlist.length === 0 ? (
-                    <p className="p-6 text-center text-sm text-muted-foreground">Your wishlist is empty.</p>
-                  ) : (
-                    <ul className="max-h-64 overflow-y-auto divide-y divide-border">
-                      {wishlist.map((item) => (
-                        <li key={item.id} className="flex items-center gap-3 p-3">
-                          <img src={item.image} alt={item.name} className="h-10 w-10 rounded-lg object-cover border border-border bg-muted shrink-0" />
-                          <Link
-                            to={`/products/${item.slug}`}
-                            className="flex-1 text-xs font-semibold text-foreground/90 hover:text-primary line-clamp-2"
-                            onClick={() => setWishlistOpen(false)}
-                          >
-                            {item.name}
-                          </Link>
-                          <button
-                            onClick={() => toggleWishlist(item)}
-                            className="p-1.5 rounded-full hover:bg-destructive/10 text-destructive transition"
-                            aria-label="Remove"
-                          >
-                            <X className="h-3.5 w-3.5" />
-                          </button>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                  {wishlist.length > 0 && (
-                    <div className="p-3 border-t border-border">
-                      <Link
-                        to="/products"
-                        onClick={() => setWishlistOpen(false)}
-                        className="flex items-center justify-center gap-1 w-full rounded-xl bg-foreground text-background text-xs font-semibold py-2 hover:opacity-90 transition"
-                      >
-                        Browse Products <ChevronRight className="h-3 w-3" />
-                      </Link>
-                    </div>
-                  )}
-                </motion.div>
-              )}
-            </AnimatePresence>
+            </Link>
           </div>
 
           {/* ── Cart Icon ──────────────────────────────────────── */}
           <div className="relative ml-1">
-            <button
+            <Link
+              to="/cart"
               id="cart-btn"
               aria-label="Cart"
-              onClick={() => { setCartOpen((v) => !v); setWishlistOpen(false); setAccountOpen(false); }}
               className="relative grid h-9 w-9 place-items-center rounded-full border border-border bg-card text-foreground/70 hover:text-foreground hover:bg-secondary transition active:scale-95"
             >
               <ShoppingCart className="h-4 w-4" />
@@ -381,62 +324,7 @@ export function Navbar() {
                   {cartCount}
                 </span>
               )}
-            </button>
-
-            <AnimatePresence>
-              {cartOpen && (
-                <motion.div
-                  initial={{ opacity: 0, y: 8, scale: 0.96 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={{ opacity: 0, y: 8, scale: 0.96 }}
-                  transition={{ duration: 0.15 }}
-                  className="absolute right-0 top-12 w-80 rounded-2xl border border-border bg-card shadow-lift overflow-hidden"
-                >
-                  <div className="p-4 border-b border-border">
-                    <p className="font-semibold text-sm">Cart ({cartCount} items)</p>
-                  </div>
-                  {cart.length === 0 ? (
-                    <p className="p-6 text-center text-sm text-muted-foreground">Your cart is empty.</p>
-                  ) : (
-                    <ul className="max-h-64 overflow-y-auto divide-y divide-border">
-                      {cart.map((item) => (
-                        <li key={item.id} className="flex items-center gap-3 p-3">
-                          <img src={item.image} alt={item.name} className="h-10 w-10 rounded-lg object-cover border border-border bg-muted shrink-0" />
-                          <div className="flex-1 min-w-0">
-                            <Link
-                              to={`/products/${item.slug}`}
-                              className="text-xs font-semibold text-foreground/90 hover:text-primary line-clamp-1"
-                              onClick={() => setCartOpen(false)}
-                            >
-                              {item.name}
-                            </Link>
-                            <p className="text-xs text-muted-foreground mt-0.5">Qty: {item.qty}</p>
-                          </div>
-                          <button
-                            onClick={() => removeFromCart(item.id)}
-                            className="p-1.5 rounded-full hover:bg-destructive/10 text-destructive transition shrink-0"
-                            aria-label="Remove"
-                          >
-                            <X className="h-3.5 w-3.5" />
-                          </button>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                  {cart.length > 0 && (
-                    <div className="p-3 border-t border-border">
-                      <Link
-                        to="/contact"
-                        onClick={() => setCartOpen(false)}
-                        className="flex items-center justify-center gap-1 w-full rounded-xl bg-foreground text-background text-xs font-semibold py-2 hover:opacity-90 transition"
-                      >
-                        Enquire About Cart Items <ChevronRight className="h-3 w-3" />
-                      </Link>
-                    </div>
-                  )}
-                </motion.div>
-              )}
-            </AnimatePresence>
+            </Link>
           </div>
 
           {/* ── Account Icon (right side of Cart) ──────────────── */}
@@ -661,14 +549,14 @@ export function Navbar() {
               {/* Wishlist & Cart buttons */}
               <div className="mt-auto flex gap-3">
                 <Link
-                  to="/products"
+                  to="/wishlist"
                   onClick={() => setOpen(false)}
                   className="flex flex-1 items-center justify-center gap-2 rounded-2xl border border-border py-4 text-xs font-semibold transition hover:bg-secondary"
                 >
                   <Heart className="h-4 w-4 text-rose-500" /> Wishlist {wishlistCount > 0 && `(${wishlistCount})`}
                 </Link>
                 <Link
-                  to="/contact"
+                  to="/cart"
                   onClick={() => setOpen(false)}
                   className="flex flex-1 items-center justify-center gap-2 rounded-2xl bg-foreground py-4 text-xs font-semibold text-background transition hover:opacity-90"
                 >

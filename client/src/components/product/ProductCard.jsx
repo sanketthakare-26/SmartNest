@@ -73,6 +73,14 @@ export function ProductCard({ product, index = 0 }) {
         <div className="line-clamp-2 text-[15px] font-semibold leading-snug text-foreground">
           {product.name}
         </div>
+        {product.price > 0 && (
+          <div className="flex items-center gap-1">
+            <span className="text-base font-bold text-primary">
+              ₹{Number(product.price).toLocaleString("en-IN")}
+            </span>
+            <span className="text-[11px] text-muted-foreground font-medium">onwards</span>
+          </div>
+        )}
         <p className="line-clamp-2 text-xs text-muted-foreground">{product.shortDescription}</p>
 
         {/* Action buttons */}

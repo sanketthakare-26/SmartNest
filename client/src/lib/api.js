@@ -70,6 +70,16 @@ export const userAuthApi = {
       method: "POST",
       body: { name, email },
     }),
+  forgotPassword: (email) =>
+    request("/api/user/forgot-password", {
+      method: "POST",
+      body: { email },
+    }),
+  resetPassword: (email, otp, newPassword) =>
+    request("/api/user/reset-password", {
+      method: "POST",
+      body: { email, otp, newPassword },
+    }),
 };
 
 // ─── Products ────────────────────────────────────────────────────────────────
@@ -126,4 +136,22 @@ export const enquiriesApi = {
     request(`/api/enquiries/${id}`, { method: "PUT", body: { status }, token }),
   delete: (id, token) =>
     request(`/api/enquiries/${id}`, { method: "DELETE", token }),
+};
+
+// ─── Schedules ───────────────────────────────────────────────────────────────
+export const schedulesApi = {
+  getAvailable: (date) => request(`/api/schedules/available?date=${encodeURIComponent(date)}`),
+  getAll: (token) => request("/api/schedules", { token }),
+  create: (data, token) => request("/api/schedules", { method: "POST", body: data, token }),
+  update: (id, data, token) => request(`/api/schedules/${id}`, { method: "PUT", body: data, token }),
+  delete: (id, token) => request(`/api/schedules/${id}`, { method: "DELETE", token }),
+};
+
+// ─── Appointments ────────────────────────────────────────────────────────────
+export const appointmentsApi = {
+  create: (data) => request("/api/appointments", { method: "POST", body: data }),
+  getAll: (token) => request("/api/appointments", { token }),
+  updateStatus: (id, status, token) =>
+    request(`/api/appointments/${id}/status`, { method: "PUT", body: { status }, token }),
+  delete: (id, token) => request(`/api/appointments/${id}`, { method: "DELETE", token }),
 };

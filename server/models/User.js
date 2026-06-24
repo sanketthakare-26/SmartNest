@@ -19,8 +19,17 @@ const userSchema = new mongoose.Schema(
       type: String,
       required: [true, "User password is required"],
     },
+    resetPasswordOTP: {
+      type: String,
+      default: null,
+    },
+    resetPasswordOTPExpires: {
+      type: Date,
+      default: null,
+    },
   },
   { timestamps: true }
+
 );
 
 // Encrypt password before saving

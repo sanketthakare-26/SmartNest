@@ -17,6 +17,8 @@ import Category from "./pages/Category";
 import Brand from "./pages/Brand";
 import About from "./pages/About";
 import Contact from "./pages/Contact";
+import Cart from "./pages/Cart";
+import Wishlist from "./pages/Wishlist";
 import Login from "./pages/admin/Login";
 import Dashboard from "./pages/admin/Dashboard";
 
@@ -57,6 +59,8 @@ export function App() {
                   <Route path="/brand/:slug" element={<Brand />} />
                   <Route path="/about" element={<About />} />
                   <Route path="/contact" element={<Contact />} />
+                  <Route path="/cart" element={<Cart />} />
+                  <Route path="/wishlist" element={<Wishlist />} />
                   <Route path="/admin/login" element={<Login />} />
                   <Route path="/admin/dashboard" element={<Dashboard />} />
                   <Route
