@@ -1,14 +1,48 @@
-import { motion } from "framer-motion";
+import { useEffect, useRef, useState } from "react";
+import { cn } from "@/lib/utils";
 
-export default function AnimatedSection({ children, delay = 0 }) {
+export function AnimatedSection({
+  children,
+  className,
+  delay = 0,
+  as: Tag = "div",
+}) {
+  const ref = useRef(null);
+  const [visible, setVisible] = useState(false);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const io = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((e) => {
+          if (e.isIntersecting) {
+            setVisible(true);
+            io.disconnect();
+          }
+        });
+      },
+      { threshold: 0.12, rootMargin: "0px 0px -40px 0px" },
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
+
+  const Comp = Tag;
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 30 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true, amount: 0.2 }}
-      transition={{ duration: 0.5, delay, ease: "easeOut" }}
+    <Comp
+      ref={ref}
+      style={{
+        transitionDelay: `${delay}ms`,
+        transform: visible ? "translateY(0)" : "translateY(30px)",
+        opacity: visible ? 1 : 0,
+        transitionProperty: "opacity, transform",
+        transitionDuration: "700ms",
+        transitionTimingFunction: "cubic-bezier(0.22, 1, 0.36, 1)",
+      }}
+      className={cn(className)}
     >
       {children}
-    </motion.div>
+    </Comp>
   );
 }

@@ -1,174 +1,161 @@
-import React, { useState } from "react";
-import AnimatedSection from "../components/common/AnimatedSection";
-import Button from "../components/common/Button";
-import api from "../lib/api";
-import { Mail, Phone, MapPin, Send, CheckCircle, AlertCircle } from "lucide-react";
+import { useState, useEffect } from "react";
+import { MessageCircle, Phone, Mail, MapPin, Check } from "lucide-react";
+import { whatsappLink, PHONE_NUMBER, EMAIL, categories } from "../lib/data";
+import { AnimatedSection } from "../components/common/AnimatedSection";
+import { enquiriesApi } from "../lib/api";
 
-const Contact = () => {
-  const [form, setForm] = useState({
-    name: "",
-    email: "",
-    phone: "",
-    message: "",
-  });
+export function Contact() {
+  const [sent, setSent] = useState(false);
+  const [form, setForm] = useState({ name: "", phone: "", email: "", interest: categories[0].slug, message: "" });
   const [loading, setLoading] = useState(false);
-  const [status, setStatus] = useState(null); // 'success' | 'error'
-  const [msg, setMsg] = useState("");
 
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setForm((prev) => ({ ...prev, [name]: value }));
-  };
+  useEffect(() => {
+    document.title = "Contact SmartNest — Free Smart Home Consultation";
+    const meta = document.querySelector('meta[name="description"]');
+    if (meta) {
+      meta.setAttribute(
+        "content",
+        "Send us an enquiry, chat on WhatsApp or call us directly. Free site visit and no-obligation quote."
+      );
+    }
+  }, []);
 
-  const handleFormSubmit = async (e) => {
+  const onSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
-    setStatus(null);
-    setMsg("");
+    const interestCategory = categories.find((c) => c.slug === form.interest);
+    const interest = interestCategory?.name ?? "";
 
     try {
-      await api.post("/enquiries", form);
-      setStatus("success");
-      setMsg("Thank you! Your inquiry has been submitted successfully. Our technicians will connect with you shortly.");
-      setForm({ name: "", email: "", phone: "", message: "" });
+      // 1. Submit to the Express backend database
+      await enquiriesApi.create({
+        name: form.name,
+        phone: form.phone,
+        email: form.email || undefined,
+        message: form.message || undefined,
+        category: interest,
+      });
     } catch (err) {
-      setStatus("error");
-      setMsg(err.response?.data?.message || err.message || "Failed to submit enquiry.");
+      console.error("Failed saving enquiry to backend API:", err);
     } finally {
       setLoading(false);
     }
+
+    // 2. Open WhatsApp link as primary channel
+    const msg = `Hi SmartNest, I'm ${form.name}. I'm interested in ${interest}.\n\n${form.message}\n\nPhone: ${form.phone}\nEmail: ${form.email}`;
+    window.open(whatsappLink(msg), "_blank");
+    setSent(true);
   };
 
   return (
-    <div className="py-16 px-6 md:px-12 max-w-6xl mx-auto text-left min-h-screen">
-      <AnimatedSection className="mb-12">
-        <h1 className="text-4xl font-extrabold text-white mb-3">Get in Touch</h1>
-        <p className="text-gray-400 text-sm max-w-xl">
-          Interested in scheduling an installation or want to enquire about specific catalog accessories? Drop us a line.
-        </p>
+    <div className="mx-auto max-w-7xl px-4 pb-24 pt-10 sm:px-6 sm:pt-14">
+      <AnimatedSection>
+        <div className="max-w-3xl">
+          <span className="text-xs font-bold uppercase tracking-[0.18em] text-primary">Contact</span>
+          <h1 className="mt-2 text-4xl font-extrabold tracking-tight sm:text-5xl">Let's build something smart.</h1>
+          <p className="mt-3 text-base text-muted-foreground">Tell us about your home and we'll design a package that fits. Free site visit, no obligation.</p>
+        </div>
       </AnimatedSection>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-12 items-start">
-        {/* Contact Info */}
-        <AnimatedSection className="lg:col-span-1 flex flex-col gap-6">
-          <div className="glass-card p-6 rounded-2xl border border-slate-900 flex flex-col gap-8">
-            <h3 className="text-lg font-bold text-white">Contact Details</h3>
-
-            <div className="flex items-start gap-4">
-              <div className="p-3 bg-primary/10 rounded-xl text-primary border border-primary/10 shrink-0">
-                <Phone size={18} />
-              </div>
-              <div>
-                <h4 className="text-white font-semibold text-sm">Call/WhatsApp</h4>
-                <p className="text-xs text-gray-500 mt-0.5">Support Desk available 9am - 6pm</p>
-                <a href="tel:+1234567890" className="text-sm text-gray-300 hover:text-primary transition mt-1 block">
-                  +1 (234) 567-890
-                </a>
-              </div>
+      <div className="mt-10 grid gap-8 md:grid-cols-[1.3fr_1fr]">
+        {/* Form */}
+        <AnimatedSection>
+          <form onSubmit={onSubmit} className="rounded-[2rem] border border-border bg-card p-6 shadow-card sm:p-8">
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Field label="Your name">
+                <input required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="h-12 w-full rounded-2xl border border-border bg-background px-4 text-sm outline-none focus:border-primary transition" />
+              </Field>
+              <Field label="Phone">
+                <input required type="tel" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} className="h-12 w-full rounded-2xl border border-border bg-background px-4 text-sm outline-none focus:border-primary transition" />
+              </Field>
+              <Field label="Email" className="sm:col-span-2">
+                <input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} className="h-12 w-full rounded-2xl border border-border bg-background px-4 text-sm outline-none focus:border-primary transition" />
+              </Field>
+              <Field label="Interested in" className="sm:col-span-2">
+                <select value={form.interest} onChange={(e) => setForm({ ...form, interest: e.target.value })} className="h-12 w-full rounded-2xl border border-border bg-background px-4 text-sm outline-none focus:border-primary transition">
+                  {categories.map((c) => (
+                    <option key={c.slug} value={c.slug}>{c.name}</option>
+                  ))}
+                </select>
+              </Field>
+              <Field label="Tell us about your home" className="sm:col-span-2">
+                <textarea rows={4} value={form.message} onChange={(e) => setForm({ ...form, message: e.target.value })} placeholder="E.g. 3BHK apartment, need digital lock + 4 cameras + curtain automation in the master bedroom." className="w-full rounded-2xl border border-border bg-background px-4 py-3 text-sm outline-none focus:border-primary transition" />
+              </Field>
             </div>
 
-            <div className="flex items-start gap-4">
-              <div className="p-3 bg-secondary/10 rounded-xl text-secondary border border-secondary/10 shrink-0">
-                <Mail size={18} />
-              </div>
-              <div>
-                <h4 className="text-white font-semibold text-sm">Email Support</h4>
-                <p className="text-xs text-gray-500 mt-0.5">We reply within 24 hours</p>
-                <a href="mailto:support@smartnest.com" className="text-sm text-gray-300 hover:text-primary transition mt-1 block">
-                  support@smartnest.com
-                </a>
-              </div>
-            </div>
+            <button type="submit" disabled={loading} className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-full bg-primary py-4 text-sm font-semibold text-primary-foreground shadow-soft transition hover:opacity-95 active:scale-95 disabled:opacity-50 sm:w-auto sm:px-8">
+              <MessageCircle className="h-4 w-4" /> {loading ? "Saving enquiry..." : "Send via WhatsApp"}
+            </button>
 
-            <div className="flex items-start gap-4">
-              <div className="p-3 bg-primary/10 rounded-xl text-primary border border-primary/10 shrink-0">
-                <MapPin size={18} />
+            {sent && (
+              <div className="mt-4 flex items-center gap-2 rounded-2xl bg-mint-soft px-4 py-3 text-sm text-foreground animate-fade-in">
+                <Check className="h-4 w-4 text-primary" /> Opened WhatsApp — please hit send in the chat to complete your enquiry.
               </div>
-              <div>
-                <h4 className="text-white font-semibold text-sm">Innovation Lab</h4>
-                <p className="text-sm text-gray-300 mt-1">
-                  100 Silicon Blvd, Suite 404<br />San Francisco, CA 94107
-                </p>
-              </div>
+            )}
+          </form>
+        </AnimatedSection>
+
+        {/* Info */}
+        <AnimatedSection delay={120}>
+          <div className="flex flex-col gap-4">
+            <InfoCard icon={Phone} title="Call us" body={PHONE_NUMBER} href={`tel:${PHONE_NUMBER.replace(/\s/g, "")}`} />
+            <InfoCard icon={MessageCircle} title="WhatsApp" body="Tap to start a chat" href={whatsappLink()} accent />
+            <InfoCard icon={Mail} title="Email" body={EMAIL} href={`mailto:${EMAIL}`} />
+            <InfoCard icon={MapPin} title="Showroom" body="Open Mon–Sat · 10am–7pm" />
+            <div className="rounded-3xl border border-border bg-gradient-hero p-6 shadow-card">
+              <div className="text-sm font-bold uppercase tracking-wider text-primary">Promise</div>
+              <p className="mt-2 text-sm text-foreground/80">We reply to every enquiry within 2 working hours. Free site visit anywhere in city limits.</p>
             </div>
           </div>
         </AnimatedSection>
+      </div>
 
-        {/* Contact Form */}
-        <AnimatedSection className="lg:col-span-2 glass-card p-8 rounded-2xl border border-slate-900">
-          <h3 className="text-xl font-bold text-white mb-6">Send an Inquiry</h3>
+      {/* Map Section */}
+      <AnimatedSection delay={200} className="mt-12">
+        <div className="overflow-hidden rounded-[2.5rem] border border-border bg-card shadow-card">
+          <div className="border-b border-border bg-secondary/50 px-6 py-4 flex items-center gap-2">
+            <MapPin className="h-5 w-5 text-primary" />
+            <span className="text-sm font-bold uppercase tracking-wider text-foreground/80">Our Experience Centre</span>
+          </div>
+          <iframe 
+            src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3684.126447814983!2d88.428588!3d22.574347!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x0%3A0x0!2zMjLCbDM0JzI3LjYiTiA4OMKwMjUnNDIuOSJF!5e0!3m2!1sen!2sin!4v1680000000000!5m2!1sen!2sin" 
+            width="100%" 
+            height="350" 
+            style={{ border: 0, filter: "grayscale(0.1) contrast(1.05)" }} 
+            allowFullScreen={true}
+            loading="lazy" 
+            referrerPolicy="no-referrer-when-downgrade"
+            title="SmartNest Showroom Map"
+            className="w-full"
+          />
+        </div>
+      </AnimatedSection>
+    </div>
+  );
+}
 
-          {status && (
-            <div className={`p-4 rounded-xl border flex items-start gap-2 text-xs mb-6 ${
-              status === "success"
-                ? "bg-green-500/10 text-green-400 border-green-500/20"
-                : "bg-red-500/10 text-red-400 border-red-500/20"
-            }`}>
-              {status === "success" ? <CheckCircle size={16} /> : <AlertCircle size={16} />}
-              <span>{msg}</span>
-            </div>
-          )}
+function Field({ label, className = "", children }) {
+  return (
+    <label className={`flex flex-col gap-1.5 ${className}`}>
+      <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{label}</span>
+      {children}
+    </label>
+  );
+}
 
-          <form onSubmit={handleFormSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="flex flex-col gap-1.5 md:col-span-1">
-              <label className="text-xs font-semibold text-gray-400">Your Name</label>
-              <input
-                type="text"
-                name="name"
-                required
-                value={form.name}
-                onChange={handleInputChange}
-                className="bg-slate-900 border border-slate-800 focus:border-primary px-3 py-2.5 rounded-lg text-sm text-white focus:outline-none"
-                placeholder="Full Name"
-              />
-            </div>
-            <div className="flex flex-col gap-1.5 md:col-span-1">
-              <label className="text-xs font-semibold text-gray-400">Phone Number</label>
-              <input
-                type="text"
-                name="phone"
-                required
-                value={form.phone}
-                onChange={handleInputChange}
-                className="bg-slate-900 border border-slate-800 focus:border-primary px-3 py-2.5 rounded-lg text-sm text-white focus:outline-none"
-                placeholder="+1 (555) 000-0000"
-              />
-            </div>
-            <div className="flex flex-col gap-1.5 md:col-span-2">
-              <label className="text-xs font-semibold text-gray-400">Email Address</label>
-              <input
-                type="email"
-                name="email"
-                required
-                value={form.email}
-                onChange={handleInputChange}
-                className="bg-slate-900 border border-slate-800 focus:border-primary px-3 py-2.5 rounded-lg text-sm text-white focus:outline-none"
-                placeholder="email@example.com"
-              />
-            </div>
-            <div className="flex flex-col gap-1.5 md:col-span-2">
-              <label className="text-xs font-semibold text-gray-400">Message / Request</label>
-              <textarea
-                name="message"
-                required
-                rows={6}
-                value={form.message}
-                onChange={handleInputChange}
-                className="bg-slate-900 border border-slate-800 focus:border-primary px-3 py-2.5 rounded-lg text-sm text-white focus:outline-none resize-none"
-                placeholder="How can we help automate your space?"
-              />
-            </div>
-            <div className="md:col-span-2 flex justify-end">
-              <Button type="submit" variant="primary" loading={loading} className="px-8 py-3">
-                <Send size={16} className="mr-2" />
-                <span>Submit Details</span>
-              </Button>
-            </div>
-          </form>
-        </AnimatedSection>
+function InfoCard({ icon: Icon, title, body, href, accent }) {
+  const inner = (
+    <div className={`flex items-center gap-4 rounded-3xl border border-border p-5 shadow-card transition duration-300 hover:-translate-y-1 hover:shadow-lift ${accent ? "bg-mint-soft border-mint-soft" : "bg-card"}`}>
+      <span className="grid h-12 w-12 place-items-center rounded-2xl bg-secondary text-primary">
+        <Icon className="h-5 w-5" />
+      </span>
+      <div>
+        <div className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{title}</div>
+        <div className="text-base font-semibold text-foreground">{body}</div>
       </div>
     </div>
   );
-};
+  return href ? <a href={href} target={href.startsWith("http") ? "_blank" : undefined} rel="noreferrer">{inner}</a> : inner;
+}
 
 export default Contact;

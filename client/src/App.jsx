@@ -1,30 +1,86 @@
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { AdminAuthProvider, useAuth } from "./context/AdminAuthContext";
-// Import all pages...
+import { BrowserRouter as Router, Routes, Route, Link, useLocation } from "react-router-dom";
+import { useEffect } from "react";
+import { Navbar } from "./components/layout/Navbar";
+import { Footer } from "./components/layout/Footer";
+import { WhatsAppButton } from "./components/layout/WhatsAppButton";
+import { AuthProvider } from "./context/AdminAuthContext";
+import { UserAuthProvider } from "./context/UserAuthContext";
+import { StoreProvider } from "./context/StoreContext";
+import { CartProvider } from "./context/CartContext";
+import { Toaster } from "sonner";
 
-function ProtectedRoute({ children }) {
-  const { user } = useAuth();
-  return user ? children : <Navigate to="/admin/login" />;
+// Pages
+import Home from "./pages/Home";
+import Products from "./pages/Products";
+import ProductDetail from "./pages/ProductDetail";
+import Category from "./pages/Category";
+import Brand from "./pages/Brand";
+import About from "./pages/About";
+import Contact from "./pages/Contact";
+import Login from "./pages/admin/Login";
+import Dashboard from "./pages/admin/Dashboard";
+
+function ScrollToTop() {
+  const { pathname } = useLocation();
+  useEffect(() => { window.scrollTo(0, 0); }, [pathname]);
+  return null;
 }
 
-export default function App() {
+function LayoutWrapper({ children }) {
+  const { pathname } = useLocation();
+  const isAdminDashboard = pathname.startsWith("/admin/dashboard");
+
   return (
-    <AdminAuthProvider>
-      <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Home />} />
-          <Route path="/products" element={<Products />} />
-          <Route path="/products/:slug" element={<ProductDetail />} />
-          <Route path="/category/:slug" element={<Category />} />
-          <Route path="/brand/:slug" element={<Brand />} />
-          <Route path="/about" element={<About />} />
-          <Route path="/contact" element={<Contact />} />
-          <Route path="/admin/login" element={<Login />} />
-          <Route path="/admin/dashboard" element={
-            <ProtectedRoute><Dashboard /></ProtectedRoute>
-          } />
-        </Routes>
-      </BrowserRouter>
-    </AdminAuthProvider>
+    <div className="flex min-h-screen flex-col bg-background">
+      {!isAdminDashboard && <Navbar />}
+      <main className="flex-1">{children}</main>
+      {!isAdminDashboard && <Footer />}
+      {!isAdminDashboard && <WhatsAppButton />}
+    </div>
   );
 }
+
+export function App() {
+  return (
+    <Router>
+      <ScrollToTop />
+      <AuthProvider>
+        <UserAuthProvider>
+          <StoreProvider>
+            <CartProvider>
+              <LayoutWrapper>
+                <Routes>
+                  <Route path="/" element={<Home />} />
+                  <Route path="/products" element={<Products />} />
+                  <Route path="/products/:slug" element={<ProductDetail />} />
+                  <Route path="/category/:slug" element={<Category />} />
+                  <Route path="/brand/:slug" element={<Brand />} />
+                  <Route path="/about" element={<About />} />
+                  <Route path="/contact" element={<Contact />} />
+                  <Route path="/admin/login" element={<Login />} />
+                  <Route path="/admin/dashboard" element={<Dashboard />} />
+                  <Route
+                    path="*"
+                    element={
+                      <div className="flex min-h-[70vh] flex-col items-center justify-center text-center px-4">
+                        <h1 className="text-7xl font-bold text-foreground">404</h1>
+                        <h2 className="mt-4 text-xl font-semibold">Page not found</h2>
+                        <p className="mt-2 text-sm text-muted-foreground">The page you are looking for does not exist.</p>
+                        <Link to="/" className="mt-6 inline-flex rounded-full bg-primary px-6 py-2.5 text-sm font-semibold text-primary-foreground shadow-soft">
+                          Go Home
+                        </Link>
+                      </div>
+                    }
+                  />
+                </Routes>
+              </LayoutWrapper>
+              <Toaster position="top-right" richColors />
+            </CartProvider>
+          </StoreProvider>
+        </UserAuthProvider>
+      </AuthProvider>
+    </Router>
+  );
+}
+
+export default App;

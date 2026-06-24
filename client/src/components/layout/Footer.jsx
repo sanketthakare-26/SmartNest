@@ -1,78 +1,76 @@
-import React from "react";
 import { Link } from "react-router-dom";
-import { Cpu, Globe, MessageCircle, ExternalLink, Heart } from "lucide-react";
+import { Facebook, Instagram, Linkedin, Youtube, Mail, Phone } from "lucide-react";
+import { useStore } from "../../context/StoreContext";
+import { EMAIL, PHONE_NUMBER } from "@/lib/data";
 
-const Footer = () => {
+export function Footer() {
+  const { categories, brands } = useStore();
   return (
-    <footer className="bg-dark/50 border-t border-slate-900 text-gray-400 py-12 px-6 md:px-12 mt-auto">
-      <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-4 gap-8">
-        {/* Brand */}
-        <div className="flex flex-col gap-4">
-          <Link to="/" className="flex items-center gap-2 text-xl font-bold text-white">
-            <Cpu className="text-primary w-6 h-6" />
-            <span>Smart<span className="text-primary">Nest</span></span>
-          </Link>
-          <p className="text-sm">
-            Elevating everyday spaces with next-generation smart home tech, sensors, and intelligent automation systems.
+    <footer className="mt-24 border-t border-border bg-card">
+      <div className="mx-auto grid max-w-7xl gap-10 px-4 py-14 sm:px-6 md:grid-cols-4">
+        <div>
+          <div className="text-xl font-extrabold">SmartNest</div>
+          <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
+            Premium smart home automation — sourced from the world's best brands, installed by certified technicians.
           </p>
+          <div className="mt-5 flex gap-2">
+            {[Facebook, Instagram, Linkedin, Youtube].map((Icon, i) => (
+              <a key={i} href="#" aria-label="Social link" className="grid h-9 w-9 place-items-center rounded-full bg-secondary text-foreground/70 transition hover:bg-primary hover:text-primary-foreground">
+                <Icon className="h-4 w-4" />
+              </a>
+            ))}
+          </div>
         </div>
 
-        {/* Quick Links */}
         <div>
-          <h4 className="text-white font-semibold mb-4">Explore</h4>
-          <ul className="space-y-2 text-sm">
-            <li><Link to="/" className="hover:text-primary transition">Home</Link></li>
-            <li><Link to="/products" className="hover:text-primary transition">Products</Link></li>
-            <li><Link to="/about" className="hover:text-primary transition">About Us</Link></li>
-            <li><Link to="/contact" className="hover:text-primary transition">Contact</Link></li>
+          <div className="text-sm font-bold uppercase tracking-wider text-foreground/80">Categories</div>
+          <ul className="mt-4 space-y-2 text-sm text-muted-foreground">
+            {categories.slice(0, 6).map((c) => (
+              <li key={c.slug}>
+                <Link to={`/category/${c.slug}`} className="hover:text-foreground">
+                  {c.name}
+                </Link>
+              </li>
+            ))}
           </ul>
         </div>
 
-        {/* Support */}
         <div>
-          <h4 className="text-white font-semibold mb-4">Support</h4>
-          <ul className="space-y-2 text-sm">
-            <li><a href="#" className="hover:text-primary transition">Terms of Service</a></li>
-            <li><a href="#" className="hover:text-primary transition">Privacy Policy</a></li>
-            <li><a href="#" className="hover:text-primary transition">F.A.Q</a></li>
-            <li><Link to="/contact" className="hover:text-primary transition">Enquiries</Link></li>
+          <div className="text-sm font-bold uppercase tracking-wider text-foreground/80">Top Brands</div>
+          <ul className="mt-4 grid grid-cols-2 gap-2 text-sm text-muted-foreground">
+            {brands.slice(0, 8).map((b) => (
+              <li key={b.slug}>
+                <Link to={`/brand/${b.slug}`} className="hover:text-foreground">
+                  {b.name}
+                </Link>
+              </li>
+            ))}
           </ul>
         </div>
 
-        {/* Newsletter */}
-        <div className="flex flex-col gap-4">
-          <h4 className="text-white font-semibold">Stay Connected</h4>
-          <p className="text-sm">Subscribe to receive smart home tips, product updates, and exclusive guides.</p>
-          <form onSubmit={(e) => e.preventDefault()} className="flex">
-            <input
-              type="email"
-              placeholder="Your email address"
-              className="bg-dark-card border border-dark-border px-3 py-2 text-sm rounded-l-lg focus:outline-none focus:border-primary w-full text-white"
-            />
-            <button type="submit" className="bg-primary hover:bg-primary-hover px-4 rounded-r-lg text-dark font-semibold text-sm transition">
-              Join
-            </button>
-          </form>
+        <div>
+          <div className="text-sm font-bold uppercase tracking-wider text-foreground/80">Reach us</div>
+          <ul className="mt-4 space-y-3 text-sm text-muted-foreground">
+            <li className="flex items-center gap-2">
+              <Phone className="h-4 w-4 text-primary" /> {PHONE_NUMBER}
+            </li>
+            <li className="flex items-center gap-2">
+              <Mail className="h-4 w-4 text-primary" /> {EMAIL}
+            </li>
+            <li>
+              <Link to="/contact" className="inline-block rounded-full bg-foreground px-5 py-2 text-xs font-semibold text-background">
+                Send Enquiry
+              </Link>
+            </li>
+          </ul>
         </div>
       </div>
-
-      <div className="max-w-7xl mx-auto border-t border-slate-900 mt-10 pt-6 flex flex-col md:flex-row items-center justify-between text-xs gap-4">
-        <div>
-          &copy; {new Date().getFullYear()} SmartNest. All rights reserved.
-        </div>
-        <div className="flex items-center gap-2">
-          <span>Designed with</span>
-          <Heart size={12} className="text-primary fill-primary animate-pulse" />
-          <span>for smarter spaces.</span>
-        </div>
-        <div className="flex items-center gap-4 text-gray-500">
-          <a href="#" className="hover:text-white transition"><MessageCircle size={16} /></a>
-          <a href="#" className="hover:text-white transition"><Globe size={16} /></a>
-          <a href="#" className="hover:text-white transition"><ExternalLink size={16} /></a>
+      <div className="border-t border-border">
+        <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-2 px-4 py-5 text-xs text-muted-foreground sm:flex-row sm:px-6">
+          <span>© {new Date().getFullYear()} SmartNest. All rights reserved.</span>
+          <span>Crafted for premium smart homes.</span>
         </div>
       </div>
     </footer>
   );
-};
-
-export default Footer;
+}

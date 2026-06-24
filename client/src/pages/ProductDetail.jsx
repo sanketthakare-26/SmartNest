@@ -1,303 +1,205 @@
-import React, { useState, useEffect } from "react";
+import { useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
-import useFetch from "../hooks/useFetch";
-import ProductGallery from "../components/product/ProductGallery";
-import SpecTable from "../components/product/SpecTable";
-import Loader from "../components/common/Loader";
-import Button from "../components/common/Button";
-import api from "../lib/api";
-import { ArrowLeft, MessageSquare, Send, CheckCircle, AlertCircle } from "lucide-react";
+import { ArrowLeft, Check, MessageCircle, Phone, ShieldCheck, ShoppingCart, Heart } from "lucide-react";
+import { useStore } from "../context/StoreContext";
+import { useCart } from "../context/CartContext";
+import { whatsappLink, PHONE_NUMBER } from "../lib/data";
+import { ProductCard } from "../components/product/ProductCard";
+import { ProductGallery } from "../components/product/ProductGallery";
+import { SpecTable } from "../components/product/SpecTable";
+import { motion } from "framer-motion";
+import { cn } from "@/lib/utils";
 
-const ProductDetail = () => {
+// ── Cart + Wishlist buttons (desktop) ─────────────────────────────────────────
+function CartWishlistButtons({ product }) {
+  const { addToCart, toggleWishlist, isWishlisted } = useCart();
+  const wishlisted = isWishlisted(product.id || product._id);
+  return (
+    <div className="mt-7 hidden gap-3 sm:flex">
+      <button
+        onClick={() => addToCart(product)}
+        className="inline-flex flex-1 items-center justify-center gap-2 rounded-full bg-foreground px-6 py-3.5 text-sm font-semibold text-background shadow-soft transition hover:opacity-90 active:scale-[0.98]"
+      >
+        <ShoppingCart className="h-4 w-4" /> Add to Cart
+      </button>
+      <button
+        onClick={() => toggleWishlist(product)}
+        aria-label="Toggle wishlist"
+        className={cn(
+          "inline-flex items-center justify-center gap-2 rounded-full border px-5 py-3.5 text-sm font-semibold transition active:scale-[0.98]",
+          wishlisted
+            ? "border-rose-300 bg-rose-50 text-rose-600 hover:bg-rose-100"
+            : "border-border bg-card text-foreground hover:bg-secondary"
+        )}
+      >
+        <Heart className={cn("h-4 w-4", wishlisted && "fill-rose-500 text-rose-500")} />
+        {wishlisted ? "Wishlisted" : "Wishlist"}
+      </button>
+    </div>
+  );
+}
+
+// ── Mobile sticky cart + wishlist buttons ─────────────────────────────────────
+function MobileCartWishlistButtons({ product }) {
+  const { addToCart, toggleWishlist, isWishlisted } = useCart();
+  const wishlisted = isWishlisted(product.id || product._id);
+  return (
+    <>
+      <button
+        onClick={() => addToCart(product)}
+        className="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-foreground text-background shadow-soft transition active:scale-95"
+        aria-label="Add to cart"
+      >
+        <ShoppingCart className="h-5 w-5" />
+      </button>
+      <button
+        onClick={() => toggleWishlist(product)}
+        className={cn(
+          "grid h-12 w-12 shrink-0 place-items-center rounded-full border transition active:scale-95",
+          wishlisted
+            ? "border-rose-300 bg-rose-50 text-rose-500"
+            : "border-border bg-card text-foreground"
+        )}
+        aria-label="Toggle wishlist"
+      >
+        <Heart className={cn("h-5 w-5", wishlisted && "fill-rose-500")} />
+      </button>
+    </>
+  );
+}
+
+export function ProductDetail() {
+  const { getProduct, getCategory, brands, products } = useStore();
   const { slug } = useParams();
-  const { data: product, loading, error } = useFetch(`/products/${slug}`);
-
-  // Form State
-  const [enquiryForm, setEnquiryForm] = useState({
-    name: "",
-    email: "",
-    phone: "",
-    message: "",
-  });
-  const [submitLoading, setSubmitLoading] = useState(false);
-  const [submitStatus, setSubmitStatus] = useState(null); // 'success' or 'error'
-  const [statusMsg, setStatusMsg] = useState("");
-
-  // Demo Fallback Catalog
-  const demoFallbackProducts = {
-    "nest-hub-central": {
-      _id: "demo-p1",
-      name: "Nest Hub Central Console",
-      slug: "nest-hub-central",
-      price: 299,
-      description: "Take control of your home ecosystem with this intuitive, wall-mounted touch console. It pairs directly with voice assist endpoints, security sensors, cameras, and lighting rails. Built-in latency-free chip handles routines locally so your system continues working even if the internet goes offline.",
-      images: ["https://images.unsplash.com/photo-1546054454-aa26e2b734c7?auto=format&fit=crop&w=800&q=80"],
-      category: { name: "Smart Hubs", description: "Central controllers" },
-      brand: { name: "Google" },
-      inStock: true,
-      specifications: [
-        { key: "Screen Size", value: "10.1 Inches IPS LCD" },
-        { key: "Connectivity", value: "WiFi 6, Bluetooth 5.2, Thread, Zigbee" },
-        { key: "Resolution", value: "1920 x 1200" },
-        { key: "Smart Assistant", value: "Google Assistant Built-in" },
-        { key: "Processor", value: "Intelligent Neural Core 4" },
-      ],
-    },
-    "aura-bulb-pack": {
-      _id: "demo-p2",
-      name: "Aura Bulb Automation Pack",
-      slug: "aura-bulb-pack",
-      price: 49,
-      description: "Set the mood with 16 million colors and customizable light scenes. This pack of 4 LED automation bulbs fits standard E27 sockets. Adjust intensities or program sleep schedules directly using the SmartNest application.",
-      images: ["https://images.unsplash.com/photo-1550985616-10810253b84d?auto=format&fit=crop&w=800&q=80"],
-      category: { name: "Lighting" },
-      brand: { name: "Philips" },
-      inStock: true,
-      specifications: [
-        { key: "Socket Type", value: "E27" },
-        { key: "Lumens", value: "800lm (Equivalent to 60W)" },
-        { key: "Color Palette", value: "16 Million Colors RGB + Warm White" },
-        { key: "Lifetime", value: "25,000 Hours" },
-        { key: "Protocol", value: "Zigbee / Bluetooth" },
-      ],
-    },
-    "sentinel-security-lock": {
-      _id: "demo-p3",
-      name: "Sentinel Facial Security Lock",
-      slug: "sentinel-security-lock",
-      price: 199,
-      description: "Upgrade your entrance with a secure, keyless, and biometrically advanced lock. Supports high-precision facial recognition scanning, pin pads, card passes, and direct remote unlocking. Includes encrypted logs.",
-      images: ["https://images.unsplash.com/photo-1558002038-1055907df827?auto=format&fit=crop&w=800&q=80"],
-      category: { name: "Security" },
-      brand: { name: "August" },
-      inStock: true,
-      specifications: [
-        { key: "Biometrics", value: "3D IR Facial Scanner & Fingerprint Pad" },
-        { key: "Power", value: "Rechargeable Lithium Pack (8 Months Battery)" },
-        { key: "Backup", value: "Emergency USB-C Port & Physical Key Override" },
-        { key: "App Support", value: "iOS / Android Remote Keys" },
-      ],
-    },
-  };
-
-  const activeProduct = product || demoFallbackProducts[slug];
+  const product = getProduct(slug);
 
   useEffect(() => {
-    if (activeProduct) {
-      setEnquiryForm((prev) => ({
-        ...prev,
-        message: `Hi, I am interested in the "${activeProduct.name}". Please let me know more about shipping and installation options.`,
-      }));
+    if (product) {
+      document.title = `${product.name} — SmartNest`;
+      const meta = document.querySelector('meta[name="description"]');
+      if (meta) meta.setAttribute("content", product.shortDescription || "");
     }
-  }, [activeProduct]);
+  }, [product]);
 
-  if (loading && product === null) {
+  if (!product) {
     return (
-      <div className="py-20 px-6 max-w-7xl mx-auto">
-        <Loader variant="spinner" />
-      </div>
-    );
-  }
-
-  if (!activeProduct) {
-    return (
-      <div className="py-20 px-6 max-w-7xl mx-auto text-center flex flex-col items-center gap-4">
-        <AlertCircle className="text-red-400 w-12 h-12" />
-        <div>
-          <h2 className="text-2xl font-bold text-white">Product Not Found</h2>
-          <p className="text-gray-400 mt-2">The device you are looking for does not exist in our catalog.</p>
-        </div>
-        <Link to="/products">
-          <Button variant="outline" size="sm">
-            <ArrowLeft size={16} className="mr-2" />
-            <span>Return to Catalog</span>
-          </Button>
+      <div className="mx-auto max-w-xl px-4 py-24 text-center">
+        <h1 className="text-2xl font-bold text-foreground">Product not found</h1>
+        <p className="mt-2 text-sm text-muted-foreground">The product you are looking for does not exist or has been removed.</p>
+        <Link to="/products" className="mt-6 inline-block rounded-full bg-foreground px-5 py-2.5 text-sm font-semibold text-background shadow-soft transition hover:opacity-90">
+          Back to products
         </Link>
       </div>
     );
   }
 
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setEnquiryForm((prev) => ({ ...prev, [name]: value }));
-  };
+  const category = getCategory(product.categorySlug);
+  const brand = brands.find((b) => b.slug === product.brand);
+  const related = products.filter((p) => p.categorySlug === product.categorySlug && p.id !== product.id).slice(0, 4);
 
-  const handleFormSubmit = async (e) => {
-    e.preventDefault();
-    setSubmitLoading(true);
-    setSubmitStatus(null);
-    setStatusMsg("");
-
-    try {
-      await api.post("/enquiries", {
-        ...enquiryForm,
-        productId: activeProduct._id.startsWith("demo-") ? null : activeProduct._id,
-      });
-      setSubmitStatus("success");
-      setStatusMsg("Thank you! Your enquiry has been received. Our team will reach out shortly.");
-      setEnquiryForm({ name: "", email: "", phone: "", message: "" });
-    } catch (err) {
-      setSubmitStatus("error");
-      setStatusMsg(err.response?.data?.message || err.message || "Failed to submit enquiry.");
-    } finally {
-      setSubmitLoading(false);
-    }
-  };
-
-  const whatsappMessage = `Hi! I would like to enquire about the "${activeProduct.name}" (Price: $${activeProduct.price}) on SmartNest.`;
-  const whatsappUrl = `https://wa.me/1234567890?text=${encodeURIComponent(whatsappMessage)}`;
+  const msg = `Hi SmartNest, I'd like to enquire about the ${product.name}.`;
 
   return (
-    <div className="py-12 px-6 md:px-12 max-w-7xl mx-auto text-left">
-      <Link
-        to="/products"
-        className="inline-flex items-center gap-2 text-sm text-gray-400 hover:text-white mb-8 transition"
-      >
-        <ArrowLeft size={16} />
-        <span>Back to products</span>
-      </Link>
+    <div className="pb-28 sm:pb-20">
+      <div className="mx-auto max-w-7xl px-4 pt-8 sm:px-6 sm:pt-12">
+        <Link to="/products" className="inline-flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors duration-200">
+          <ArrowLeft className="h-4 w-4" /> Back to products
+        </Link>
 
-      {!product && (
-        <div className="mb-6 bg-slate-900 border border-slate-800 rounded-xl px-4 py-3 text-xs text-gray-400 flex items-center gap-2">
-          <AlertCircle size={14} className="text-primary" />
-          <span>Showing offline fallback product. Ensure MongoDB is running to fetch live database records.</span>
-        </div>
-      )}
+        <div className="mt-6 grid gap-8 md:grid-cols-2 md:gap-12">
+          {/* Gallery */}
+          <ProductGallery images={product.images} productName={product.name} />
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 mb-16">
-        {/* Left Gallery */}
-        <ProductGallery images={activeProduct.images} />
-
-        {/* Right Info */}
-        <div className="flex flex-col gap-6">
+          {/* Info */}
           <div>
-            <div className="flex items-center gap-3 mb-2">
-              {activeProduct.brand?.name && (
-                <span className="text-xs uppercase font-extrabold tracking-widest text-slate-500">
-                  {activeProduct.brand.name}
-                </span>
+            <div className="flex flex-wrap gap-2 text-[11px] font-semibold uppercase tracking-wider">
+              {category && (
+                <Link to={`/category/${category.slug}`} className="rounded-full bg-secondary px-3 py-1 text-secondary-foreground hover:bg-secondary/80 transition">{category.name}</Link>
               )}
-              <span className="text-xs font-semibold text-primary px-3 py-0.5 rounded-full bg-primary/10 border border-primary/5">
-                {activeProduct.category?.name}
-              </span>
+              {brand && (
+                <Link to={`/brand/${brand.slug}`} className="rounded-full bg-amber-soft px-3 py-1 text-foreground hover:opacity-90 transition">{brand.name}</Link>
+              )}
+              {product.tag && <span className="rounded-full bg-mint-soft px-3 py-1 text-foreground">{product.tag}</span>}
             </div>
-            <h1 className="text-3xl md:text-4xl font-extrabold text-white leading-tight">
-              {activeProduct.name}
-            </h1>
-          </div>
+            <h1 className="mt-4 text-3xl font-extrabold tracking-tight sm:text-4xl">{product.name}</h1>
+            <p className="mt-3 text-base text-muted-foreground leading-relaxed">{product.shortDescription}</p>
 
-          <div className="pb-6 border-b border-slate-900">
-            <span className="text-xs text-gray-500 block mb-1">Pricing</span>
-            <span className="text-3xl font-black text-primary">${activeProduct.price}</span>
-          </div>
+            <ul className="mt-6 space-y-2">
+              {["Free site visit & consultation", "Certified-technician installation", "2-year warranty + 24/7 support"].map((b) => (
+                <li key={b} className="flex items-start gap-2 text-sm text-foreground/80">
+                  <Check className="mt-0.5 h-4 w-4 text-primary" /> {b}
+                </li>
+              ))}
+            </ul>
 
-          <div>
-            <h4 className="text-white font-bold text-sm mb-2">Description</h4>
-            <p className="text-gray-400 text-sm leading-relaxed">{activeProduct.description}</p>
-          </div>
+            {/* ── Add to Cart + Wishlist (desktop) ── */}
+            <CartWishlistButtons product={product} />
 
-          <div className="flex flex-wrap gap-4 mt-2">
-            <a
-              href={whatsappUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-[#25D366] hover:bg-[#20BA5A] text-white font-bold transition shadow-lg shadow-green-500/10 text-sm"
-            >
-              <MessageSquare size={18} className="fill-white text-[#25D366]" />
-              <span>Enquire on WhatsApp</span>
-            </a>
+            {/* ── Enquiry buttons (desktop) ── */}
+            <div className="mt-4 hidden flex-wrap gap-3 sm:flex">
+              <a
+                href={whatsappLink(msg)}
+                target="_blank"
+                rel="noreferrer"
+                className="relative overflow-hidden inline-flex items-center gap-2 rounded-full bg-primary px-7 py-3.5 text-sm font-semibold text-primary-foreground shadow-soft transition hover:bg-primary/95 group"
+              >
+                <motion.span
+                  className="absolute inset-0 rounded-full bg-white opacity-10"
+                  animate={{ scale: [1, 1.5], opacity: [0.3, 0] }}
+                  transition={{ repeat: Infinity, duration: 1.5, ease: "easeOut" }}
+                />
+                <MessageCircle className="h-4 w-4 transition-transform group-hover:scale-110" /> Send Enquiry
+              </a>
+              <a
+                href={`tel:${PHONE_NUMBER.replace(/\s/g, "")}`}
+                className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-7 py-3.5 text-sm font-semibold text-foreground hover:bg-secondary transition"
+              >
+                <Phone className="h-4 w-4" /> Call us
+              </a>
+            </div>
+
+            {/* Specifications Table */}
+            <SpecTable specs={product.specs} />
+
+            <div className="mt-6 flex items-center gap-2 text-xs text-muted-foreground">
+              <ShieldCheck className="h-4 w-4 text-primary" /> Genuine product · Authorized dealer
+            </div>
           </div>
         </div>
+
+        {/* Related */}
+        {related.length > 0 && (
+          <section className="mt-20">
+            <h2 className="text-2xl font-extrabold tracking-tight sm:text-3xl">You may also like</h2>
+            <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-6 lg:grid-cols-4">
+              {related.map((p, i) => (
+                <ProductCard key={p.id} product={p} index={i} />
+              ))}
+            </div>
+          </section>
+        )}
       </div>
 
-      {/* Specifications & Query Form Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-12 items-start pt-12 border-t border-slate-900">
-        {/* Tech Specs */}
-        <div className="lg:col-span-2 flex flex-col gap-6">
-          <h3 className="text-xl font-bold text-white">Technical Specifications</h3>
-          <SpecTable specs={activeProduct.specifications} />
-        </div>
-
-        {/* Enquiry Form */}
-        <div className="glass-card p-6 rounded-2xl border border-slate-900 flex flex-col gap-6">
-          <div>
-            <h3 className="text-lg font-bold text-white mb-1">Request Information</h3>
-            <p className="text-xs text-gray-500">Submit your contact info and our technicians will coordinate.</p>
-          </div>
-
-          {submitStatus && (
-            <div className={`p-4 rounded-xl border flex items-start gap-2 text-xs ${
-              submitStatus === "success"
-                ? "bg-green-500/10 text-green-400 border-green-500/20"
-                : "bg-red-500/10 text-red-400 border-red-500/20"
-            }`}>
-              {submitStatus === "success" ? <CheckCircle size={16} /> : <AlertCircle size={16} />}
-              <span>{statusMsg}</span>
-            </div>
-          )}
-
-          <form onSubmit={handleFormSubmit} className="flex flex-col gap-4">
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-semibold text-gray-400">Name</label>
-              <input
-                type="text"
-                name="name"
-                required
-                value={enquiryForm.name}
-                onChange={handleInputChange}
-                className="bg-slate-900 border border-slate-800 focus:border-primary px-3 py-2 rounded-lg text-sm text-white focus:outline-none"
-                placeholder="Full Name"
-              />
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-semibold text-gray-400">Email Address</label>
-              <input
-                type="email"
-                name="email"
-                required
-                value={enquiryForm.email}
-                onChange={handleInputChange}
-                className="bg-slate-900 border border-slate-800 focus:border-primary px-3 py-2 rounded-lg text-sm text-white focus:outline-none"
-                placeholder="email@example.com"
-              />
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-semibold text-gray-400">Phone Number</label>
-              <input
-                type="text"
-                name="phone"
-                required
-                value={enquiryForm.phone}
-                onChange={handleInputChange}
-                className="bg-slate-900 border border-slate-800 focus:border-primary px-3 py-2 rounded-lg text-sm text-white focus:outline-none"
-                placeholder="+1 (555) 000-0000"
-              />
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-semibold text-gray-400">Enquiry Details</label>
-              <textarea
-                name="message"
-                required
-                rows={4}
-                value={enquiryForm.message}
-                onChange={handleInputChange}
-                className="bg-slate-900 border border-slate-800 focus:border-primary px-3 py-2 rounded-lg text-sm text-white focus:outline-none resize-none"
-              />
-            </div>
-            <Button
-              type="submit"
-              variant="primary"
-              loading={submitLoading}
-              className="w-full mt-2"
-            >
-              <Send size={16} className="mr-2" />
-              <span>Submit Enquiry</span>
-            </Button>
-          </form>
+      {/* ── Mobile sticky bar: cart + wishlist + enquire ── */}
+      <div className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-background/95 p-3 backdrop-blur sm:hidden">
+        <div className="flex items-center gap-2">
+          <MobileCartWishlistButtons product={product} />
+          <a
+            href={whatsappLink(msg)}
+            target="_blank"
+            rel="noreferrer"
+            className="relative overflow-hidden flex flex-1 items-center justify-center gap-2 rounded-full bg-primary py-3.5 text-sm font-semibold text-primary-foreground shadow-soft"
+          >
+            <motion.span
+              className="absolute inset-0 rounded-full bg-white opacity-10"
+              animate={{ scale: [1, 1.5], opacity: [0.3, 0] }}
+              transition={{ repeat: Infinity, duration: 1.5, ease: "easeOut" }}
+            />
+            <MessageCircle className="h-4 w-4" /> Send Enquiry
+          </a>
         </div>
       </div>
     </div>
   );
-};
-
+}
 export default ProductDetail;

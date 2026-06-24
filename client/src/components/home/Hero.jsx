@@ -1,105 +1,120 @@
-import React, { useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
-import { ArrowRight, Play, Shield, Zap, Sparkles } from "lucide-react";
-import { animations } from "../../lib/animations";
+import { ArrowRight } from "lucide-react";
+import { motion } from "framer-motion";
+import { useEffect } from "react";
+import { gsap } from "gsap";
+import { ScrollTrigger } from "gsap/ScrollTrigger";
+import heroImg from "@/assets/hero.jpg";
 
-const Hero = () => {
-  const titleRef = useRef(null);
-  const textRef = useRef(null);
-  const btnsRef = useRef(null);
-  const visualRef = useRef(null);
 
+const headline = ["Smart", "Living,", "Beautifully", "Automated."];
+
+export function Hero() {
   useEffect(() => {
-    const titleEl = titleRef.current;
-    const textEl = textRef.current;
-    const btnEls = btnsRef.current ? btnsRef.current.children : [];
-    const visualEl = visualRef.current;
+    // Only register ScrollTrigger on client side
+    if (typeof window !== "undefined") {
+      gsap.registerPlugin(ScrollTrigger);
 
-    animations.heroEntrance(titleEl, textEl, btnEls, visualEl);
+      // Hero image parallax effect
+      gsap.to(".hero-parallax-img", {
+        yPercent: 12,
+        ease: "none",
+        scrollTrigger: {
+          trigger: ".hero-parallax-trigger",
+          start: "top top",
+          end: "bottom top",
+          scrub: true,
+        },
+      });
+    }
   }, []);
 
+  const heroContainerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.15,
+        delayChildren: 0.1,
+      },
+    },
+  };
+
+  const heroItemVariants = {
+    hidden: { opacity: 0, y: 20 },
+    visible: {
+      opacity: 1,
+      y: 0,
+      transition: {
+        type: "spring",
+        stiffness: 90,
+        damping: 15,
+      },
+    },
+  };
+
   return (
-    <section className="relative min-h-[85vh] flex items-center justify-center overflow-hidden py-16 px-6 md:px-12 bg-radial-gradient">
-      {/* Background Ambient Glow Elements */}
-      <div className="glow-point bg-primary top-[15%] left-[10%]" />
-      <div className="glow-point bg-secondary bottom-[20%] right-[10%]" />
+    <section className="hero-parallax-trigger relative overflow-hidden bg-gradient-hero">
+      <div className="mx-auto grid max-w-7xl gap-10 px-4 pb-16 pt-10 sm:px-6 md:grid-cols-2 md:items-center md:gap-8 md:pb-24 md:pt-16">
+        <motion.div 
+          className="relative z-10"
+          variants={heroContainerVariants}
+          initial="hidden"
+          animate="visible"
+        >
 
-      <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-12 items-center relative z-10">
-        {/* Left Content */}
-        <div className="flex flex-col gap-6 text-left">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-900/80 border border-slate-800 text-xs text-primary font-medium w-fit">
-            <Sparkles size={14} className="animate-spin text-primary" />
-            <span>Intelligent Living, Redefined</span>
-          </div>
-
-          <h1
-            ref={titleRef}
-            className="text-4xl md:text-6xl font-extrabold tracking-tight text-white leading-tight"
+          <motion.h1 
+            variants={heroItemVariants}
+            className="mt-5 text-4xl font-extrabold leading-[1.05] tracking-tight text-foreground sm:text-5xl md:text-6xl"
           >
-            The Ultimate Ecosystem for Your <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary via-primary-light to-secondary">Smart Home</span>
-          </h1>
+            {headline.map((w, i) => (
+              <span key={i} className="inline-block pr-3 hover:text-primary transition-colors duration-300">
+                {w}
+              </span>
+            ))}
+          </motion.h1>
 
-          <p
-            ref={textRef}
-            className="text-base md:text-lg text-gray-400 max-w-xl"
+          <motion.p 
+            variants={heroItemVariants}
+            className="mt-5 max-w-xl text-base text-muted-foreground sm:text-lg leading-relaxed"
           >
-            Discover state-of-the-art smart home hubs, lighting automation systems, security arrays, and voice controllers. Seamlessly integrate your everyday environment.
-          </p>
+            CCTV, digital door locks, automated gates, curtains, lifts and smart panels — handpicked from the world's best brands and installed by certified pros.
+          </motion.p>
 
-          <div ref={btnsRef} className="flex flex-wrap gap-4 mt-2">
+          <motion.div 
+            variants={heroItemVariants}
+            className="mt-7 flex flex-wrap gap-3"
+          >
             <Link
               to="/products"
-              className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-primary to-secondary hover:opacity-95 text-dark font-semibold transition shadow-lg hover:shadow-primary/10"
+              className="inline-flex items-center gap-2 rounded-full bg-foreground px-6 py-3 text-sm font-semibold text-background shadow-soft transition duration-300 hover:opacity-90 hover:scale-[1.02] active:scale-[0.98]"
             >
-              <span>Explore Catalog</span>
-              <ArrowRight size={18} />
+              Browse Products <ArrowRight className="h-4 w-4" />
             </Link>
             <Link
               to="/contact"
-              className="inline-flex items-center gap-2 px-6 py-3 rounded-xl glass hover:bg-slate-800/40 text-white font-medium transition"
+              className="inline-flex items-center gap-2 rounded-full border border-border bg-background/70 px-6 py-3 text-sm font-semibold text-foreground backdrop-blur transition duration-300 hover:bg-background hover:scale-[1.02] active:scale-[0.98]"
             >
-              <Play size={18} className="fill-white text-white" />
-              <span>Consult an Expert</span>
+              Talk to an Expert
             </Link>
-          </div>
+          </motion.div>
 
-          <div className="grid grid-cols-2 gap-4 mt-8 border-t border-slate-900 pt-6">
-            <div className="flex items-center gap-3">
-              <div className="p-2.5 rounded-lg bg-primary/10 text-primary border border-primary/10">
-                <Shield size={20} />
-              </div>
-              <div>
-                <h4 className="text-white font-semibold text-sm">Secure Systems</h4>
-                <p className="text-xs text-gray-500">Military-grade IoT keys</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-3">
-              <div className="p-2.5 rounded-lg bg-secondary/10 text-secondary border border-secondary/10">
-                <Zap size={20} />
-              </div>
-              <div>
-                <h4 className="text-white font-semibold text-sm">Instant Response</h4>
-                <p className="text-xs text-gray-500">Latency-free local hubs</p>
-              </div>
-            </div>
-          </div>
-        </div>
 
-        {/* Right Dashboard Visual Mockup */}
-        <div ref={visualRef} className="flex justify-center relative">
-          <div className="relative glass-card p-2 rounded-3xl overflow-hidden border border-slate-800 shadow-2xl transition-transform hover:scale-[1.01] duration-300">
+        </motion.div>
+
+        <div className="relative">
+          <div className="relative aspect-[5/4] overflow-hidden rounded-[2rem] border border-border bg-card shadow-lift">
             <img
-              src="/hero-dashboard.png"
-              alt="Futuristic Smart Home Dashboard"
-              className="rounded-2xl w-full max-w-[560px] object-cover h-[350px] md:h-[400px] border border-slate-900"
+              src={heroImg}
+              alt="A modern smart living room with a glowing wall touch panel"
+              width={1600}
+              height={1100}
+              className="hero-parallax-img h-full w-full object-cover transition-transform duration-100"
             />
-            {/* Glossy Overlay Highlight */}
-            <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/5 to-transparent pointer-events-none" />
+            <div className="absolute inset-0 bg-gradient-to-t from-background/20 via-transparent to-transparent" />
           </div>
         </div>
       </div>
     </section>
   );
-};
-
-export default Hero;
+}

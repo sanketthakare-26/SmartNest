@@ -1,50 +1,41 @@
-import React, { useState } from "react";
+import { useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 
-const ProductGallery = ({ images = [] }) => {
-  const [activeIdx, setActiveIdx] = useState(0);
-
-  const fallbackImage = "https://images.unsplash.com/photo-1546054454-aa26e2b734c7?auto=format&fit=crop&w=600&q=80";
-
-  const getFullUrl = (url) => {
-    if (!url) return fallbackImage;
-    return url.startsWith("http") ? url : `http://localhost:5000${url}`;
-  };
-
-  const activeImage = images.length > 0 ? getFullUrl(images[activeIdx]) : fallbackImage;
+export function ProductGallery({ images, productName }) {
+  const productImages = images && images.length > 0 ? images : ["/placeholder.jpg"];
+  const [activeImgIdx, setActiveImgIdx] = useState(0);
 
   return (
-    <div className="flex flex-col gap-4">
-      {/* Main Image */}
-      <div className="w-full h-80 md:h-[450px] rounded-2xl overflow-hidden glass bg-slate-950/20 border border-slate-900 flex items-center justify-center p-2">
-        <img
-          src={activeImage}
-          alt="Product Gallery Main"
-          className="w-full h-full object-contain rounded-xl transition-all duration-300"
-        />
+    <div className="space-y-4">
+      <div className="relative overflow-hidden rounded-[2rem] border border-border bg-card shadow-card aspect-square">
+        <AnimatePresence mode="wait">
+          <motion.img
+            key={activeImgIdx}
+            src={productImages[activeImgIdx]}
+            alt={productName}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.3 }}
+            className="w-full h-full object-cover touch-pinch-zoom"
+            style={{ touchAction: "pinch-zoom" }}
+          />
+        </AnimatePresence>
       </div>
-
-      {/* Thumbnails */}
-      {images.length > 1 && (
-        <div className="flex gap-3 overflow-x-auto pb-2">
-          {images.map((img, idx) => (
+      
+      {productImages.length > 1 && (
+        <div className="grid grid-cols-5 gap-3">
+          {productImages.map((img, i) => (
             <button
-              key={idx}
-              onClick={() => setActiveIdx(idx)}
-              className={`w-20 h-20 rounded-xl overflow-hidden border-2 shrink-0 transition-all ${
-                activeIdx === idx ? "border-primary scale-[1.03]" : "border-slate-800 hover:border-slate-700"
-              }`}
+              key={i}
+              onClick={() => setActiveImgIdx(i)}
+              className={`relative overflow-hidden rounded-2xl border bg-card aspect-square transition duration-300 ${activeImgIdx === i ? "border-primary ring-2 ring-primary/20 scale-95" : "border-border hover:border-foreground/45"}`}
             >
-              <img
-                src={getFullUrl(img)}
-                alt={`Product Gallery Thumb ${idx + 1}`}
-                className="w-full h-full object-cover"
-              />
+              <img src={img} alt="" loading="lazy" className="w-full h-full object-cover" />
             </button>
           ))}
         </div>
       )}
     </div>
   );
-};
-
-export default ProductGallery;
+}

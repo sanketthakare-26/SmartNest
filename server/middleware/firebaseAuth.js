@@ -1,4 +1,4 @@
-const admin = require("../config/firebase-admin");
+const jwt = require("jsonwebtoken");
 
 module.exports = async (req, res, next) => {
   const authHeader = req.headers.authorization;
@@ -7,7 +7,10 @@ module.exports = async (req, res, next) => {
   }
   const token = authHeader.split(" ")[1];
   try {
-    const decoded = await admin.auth().verifyIdToken(token);
+    const decoded = jwt.verify(
+      token,
+      process.env.JWT_SECRET || "smartnest_secret_key_12345"
+    );
     req.user = decoded;
     next();
   } catch {

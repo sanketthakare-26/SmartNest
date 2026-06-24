@@ -1,67 +1,52 @@
-import React from "react";
+import { useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
-import useFetch from "../hooks/useFetch";
-import ProductCard from "../components/product/ProductCard";
-import Loader from "../components/common/Loader";
-import { ArrowLeft, AlertCircle } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
+import { useStore } from "../context/StoreContext";
+import { ProductCard } from "../components/product/ProductCard";
 
-const Category = () => {
+export function Category() {
+  const { getCategory, productsByCategory } = useStore();
   const { slug } = useParams();
-  const { data: category, loading: catLoading } = useFetch(`/categories/${slug}`);
+  const category = getCategory(slug);
 
-  const categoryId = category?._id;
-  const { data: productsData, loading: prodLoading } = useFetch(
-    categoryId ? `/products?category=${categoryId}` : null
-  );
-
-  const loading = catLoading || prodLoading;
-
-  if (loading) {
-    return (
-      <div className="py-20 px-6 max-w-7xl mx-auto">
-        <Loader variant="spinner" />
-      </div>
-    );
-  }
+  useEffect(() => {
+    if (category) {
+      document.title = `${category.name} — SmartNest`;
+      const meta = document.querySelector('meta[name="description"]');
+      if (meta) meta.setAttribute("content", category.tagline || "");
+    }
+  }, [category]);
 
   if (!category) {
     return (
-      <div className="py-20 px-6 max-w-7xl mx-auto text-center">
-        <p className="text-gray-400">Category not found.</p>
-        <Link to="/products" className="text-primary hover:underline mt-4 inline-block">
-          Return to Catalog
+      <div className="mx-auto max-w-xl px-4 py-24 text-center">
+        <h1 className="text-2xl font-bold">Category not found</h1>
+        <p className="mt-2 text-sm text-muted-foreground">The product category you requested does not exist.</p>
+        <Link to="/products" className="mt-6 inline-block rounded-full bg-foreground px-5 py-2.5 text-sm font-semibold text-background shadow-soft transition hover:opacity-90">
+          Browse all products
         </Link>
       </div>
     );
   }
 
-  const products = productsData?.products || [];
+  const items = productsByCategory(category.slug);
 
   return (
-    <div className="py-12 px-6 md:px-12 max-w-7xl mx-auto text-left min-h-screen">
-      <Link to="/products" className="inline-flex items-center gap-2 text-sm text-gray-400 hover:text-white mb-8 transition">
-        <ArrowLeft size={16} />
-        <span>Back to catalog</span>
+    <div className="mx-auto max-w-7xl px-4 pb-20 pt-10 sm:px-6 sm:pt-14">
+      <Link to="/products" className="inline-flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground">
+        <ArrowLeft className="h-4 w-4" /> All products
       </Link>
-
-      <div className="mb-12 border-b border-slate-900 pb-8">
-        <h1 className="text-4xl font-extrabold text-white mb-3">{category.name}</h1>
-        <p className="text-gray-400 text-sm max-w-2xl">{category.description || "Browse our selected smart devices in this category."}</p>
+      <div className="mt-6 overflow-hidden rounded-[2rem] bg-gradient-hero p-8 shadow-card sm:p-12">
+        <span className="text-xs font-bold uppercase tracking-[0.18em] text-primary">Category</span>
+        <h1 className="mt-2 text-3xl font-extrabold tracking-tight sm:text-5xl">{category.name}</h1>
+        <p className="mt-3 max-w-xl text-muted-foreground">{category.tagline}</p>
       </div>
-
-      {products.length === 0 ? (
-        <div className="text-center py-20 glass rounded-2xl p-6">
-          <p className="text-gray-400">No products found in this category.</p>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {products.map((product) => (
-            <ProductCard key={product._id} product={product} />
-          ))}
-        </div>
-      )}
+      <div className="mt-10 grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-6 lg:grid-cols-4">
+        {items.map((p, i) => (
+          <ProductCard key={p.id} product={p} index={i} />
+        ))}
+      </div>
     </div>
   );
-};
-
+}
 export default Category;

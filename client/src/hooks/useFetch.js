@@ -1,29 +1,36 @@
-import { useState, useEffect, useCallback } from "react";
-import api from "../lib/api";
+import { useState, useEffect } from "react";
 
-const useFetch = (url, options = {}) => {
+export function useFetch(fetchFn, deps = []) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  const fetchData = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const response = await api.get(url, options);
-      setData(response.data);
-    } catch (err) {
-      setError(err.response?.data?.message || err.message || "Something went wrong");
-    } finally {
-      setLoading(false);
-    }
-  }, [url, JSON.stringify(options)]);
-
   useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+    let isMounted = true;
+    setLoading(true);
 
-  return { data, loading, error, refetch: fetchData };
-};
+    fetchFn()
+      .then((res) => {
+        if (isMounted) {
+          setData(res);
+          setError(null);
+        }
+      })
+      .catch((err) => {
+        if (isMounted) {
+          setError(err instanceof Error ? err : new Error(String(err)));
+        }
+      })
+      .finally(() => {
+        if (isMounted) {
+          setLoading(false);
+        }
+      });
 
-export default useFetch;
+    return () => {
+      isMounted = false;
+    };
+  }, deps);
+
+  return { data, loading, error };
+}

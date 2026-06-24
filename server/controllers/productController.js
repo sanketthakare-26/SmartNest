@@ -102,7 +102,7 @@ const getProductBySlug = async (req, res) => {
 // @access  Private/Admin
 const createProduct = async (req, res) => {
   try {
-    const { name, description, price, category, brand, featured, inStock } = req.body;
+    const { name, description, shortDescription, price, category, brand, featured, inStock, tag } = req.body;
 
     let specifications = [];
     if (req.body.specifications) {
@@ -115,27 +115,39 @@ const createProduct = async (req, res) => {
       }
     }
 
+    // Images: if real files were uploaded use them, otherwise fall back to URL strings
     let images = [];
     if (req.files && req.files.length > 0) {
-      images = req.files.map((file) =>
-        file.path.startsWith("http") ? file.path : `/uploads/${file.filename}`
-      );
+      // real file uploads (memory buffer — store URL if using Cloudinary, or skip)
+      images = req.files.map((f) => f.originalname);
+    } else if (req.body.images) {
+      images = Array.isArray(req.body.images) ? req.body.images : [req.body.images];
     }
+    if (req.body.image && !images.includes(req.body.image)) {
+      images.unshift(req.body.image);
+    }
+
+    // Derive featured from explicit featured field OR from tag
+    const isFeatured = featured === "true" || featured === true || tag === "Featured";
 
     const product = await Product.create({
       name,
-      description,
-      price: Number(price),
+      description: description || shortDescription || "",
+      shortDescription: shortDescription || description || "",
+      price: price ? Number(price) : 0,
       category,
       brand,
       specifications,
       images,
-      featured: featured === "true" || featured === true,
+      image: images[0] || "",
+      tag: tag || "",
+      featured: isFeatured,
       inStock: inStock === "true" || inStock === true || inStock === undefined,
     });
 
     res.status(201).json(product);
   } catch (error) {
+    console.error("createProduct error:", error);
     res.status(500).json({ message: error.message || "Server error creating product" });
   }
 };
@@ -145,7 +157,7 @@ const createProduct = async (req, res) => {
 // @access  Private/Admin
 const updateProduct = async (req, res) => {
   try {
-    const { name, description, price, category, brand, featured, inStock, existingImages } = req.body;
+    const { name, description, shortDescription, price, category, brand, featured, inStock, existingImages, tag } = req.body;
     const product = await Product.findById(req.params.id);
 
     if (!product) {
@@ -153,11 +165,15 @@ const updateProduct = async (req, res) => {
     }
 
     product.name = name || product.name;
-    product.description = description || product.description;
+    product.description = description || shortDescription || product.description;
+    product.shortDescription = shortDescription || description || product.shortDescription;
     product.price = price !== undefined ? Number(price) : product.price;
     product.category = category || product.category;
     product.brand = brand || product.brand;
-    product.featured = featured !== undefined ? (featured === "true" || featured === true) : product.featured;
+    product.tag = tag !== undefined ? tag : product.tag;
+    product.featured = featured !== undefined
+      ? (featured === "true" || featured === true || tag === "Featured")
+      : product.featured;
     product.inStock = inStock !== undefined ? (inStock === "true" || inStock === true) : product.inStock;
 
     if (req.body.specifications) {
@@ -170,26 +186,28 @@ const updateProduct = async (req, res) => {
       }
     }
 
-    // Images handling: combine retained existing images and newly uploaded images
+    // Build images array: start from retained existing, add any new file uploads
     let images = [];
     if (existingImages) {
-      images = typeof existingImages === "string" ? [existingImages] : existingImages;
+      images = Array.isArray(existingImages) ? existingImages : [existingImages];
     }
-
     if (req.files && req.files.length > 0) {
-      const newImages = req.files.map((file) =>
-        file.path.startsWith("http") ? file.path : `/uploads/${file.filename}`
-      );
+      const newImages = req.files.map((f) => f.originalname);
       images = [...images, ...newImages];
     }
-
-    if (images.length > 0 || req.files) {
+    // Always update if an explicit image URL was pasted
+    if (req.body.image && !images.includes(req.body.image)) {
+      images.unshift(req.body.image);
+    }
+    if (images.length > 0) {
       product.images = images;
+      product.image = images[0];
     }
 
     const updatedProduct = await product.save();
     res.json(updatedProduct);
   } catch (error) {
+    console.error("updateProduct error:", error);
     res.status(500).json({ message: error.message || "Server error updating product" });
   }
 };

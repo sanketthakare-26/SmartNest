@@ -1,76 +1,59 @@
-import React from "react";
+import { useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
-import useFetch from "../hooks/useFetch";
-import ProductCard from "../components/product/ProductCard";
-import Loader from "../components/common/Loader";
 import { ArrowLeft } from "lucide-react";
+import { useStore } from "../context/StoreContext";
+import { ProductCard } from "../components/product/ProductCard";
 
-const Brand = () => {
+export function Brand() {
+  const { getBrand, productsByBrand } = useStore();
   const { slug } = useParams();
-  const { data: brand, loading: brandLoading } = useFetch(`/brands/${slug}`);
+  const brand = getBrand(slug);
 
-  const brandId = brand?._id;
-  const { data: productsData, loading: prodLoading } = useFetch(
-    brandId ? `/products?brand=${brandId}` : null
-  );
-
-  const loading = brandLoading || prodLoading;
-
-  if (loading) {
-    return (
-      <div className="py-20 px-6 max-w-7xl mx-auto">
-        <Loader variant="spinner" />
-      </div>
-    );
-  }
+  useEffect(() => {
+    if (brand) {
+      document.title = `${brand.name} — SmartNest`;
+      const meta = document.querySelector('meta[name="description"]');
+      if (meta) meta.setAttribute("content", `Explore ${brand.name} products at SmartNest.`);
+    }
+  }, [brand]);
 
   if (!brand) {
     return (
-      <div className="py-20 px-6 max-w-7xl mx-auto text-center">
-        <p className="text-gray-400">Brand not found.</p>
-        <Link to="/products" className="text-primary hover:underline mt-4 inline-block">
-          Return to Catalog
+      <div className="mx-auto max-w-xl px-4 py-24 text-center">
+        <h1 className="text-2xl font-bold">Brand not found</h1>
+        <p className="mt-2 text-sm text-muted-foreground">The brand you requested is not found.</p>
+        <Link to="/products" className="mt-6 inline-block rounded-full bg-foreground px-5 py-2.5 text-sm font-semibold text-background shadow-soft transition hover:opacity-90">
+          Browse all products
         </Link>
       </div>
     );
   }
 
-  const products = productsData?.products || [];
+  const items = productsByBrand(brand.slug);
 
   return (
-    <div className="py-12 px-6 md:px-12 max-w-7xl mx-auto text-left min-h-screen">
-      <Link to="/products" className="inline-flex items-center gap-2 text-sm text-gray-400 hover:text-white mb-8 transition">
-        <ArrowLeft size={16} />
-        <span>Back to catalog</span>
+    <div className="mx-auto max-w-7xl px-4 pb-20 pt-10 sm:px-6 sm:pt-14">
+      <Link to="/products" className="inline-flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground">
+        <ArrowLeft className="h-4 w-4" /> All products
       </Link>
-
-      <div className="mb-12 border-b border-slate-900 pb-8 flex items-center gap-6">
-        {brand.logo && (
-          <img
-            src={brand.logo.startsWith("http") ? brand.logo : `http://localhost:5000${brand.logo}`}
-            alt={brand.name}
-            className="w-16 h-16 rounded-2xl object-contain bg-slate-950/20 p-2 border border-slate-800"
-          />
-        )}
-        <div>
-          <h1 className="text-4xl font-extrabold text-white mb-2">{brand.name}</h1>
-          <p className="text-gray-400 text-sm max-w-2xl">{brand.description || "Browse our selected smart devices from this brand."}</p>
-        </div>
+      <div className="mt-6 overflow-hidden rounded-[2rem] bg-gradient-cta p-8 shadow-card sm:p-12">
+        <span className="text-xs font-bold uppercase tracking-[0.18em] text-foreground/70">Brand</span>
+        <h1 className="mt-2 text-3xl font-extrabold tracking-tight sm:text-5xl">{brand.name}</h1>
+        <p className="mt-3 max-w-xl text-foreground/70">Discover {items.length} {brand.name} products available at SmartNest, with certified installation and full warranty.</p>
       </div>
-
-      {products.length === 0 ? (
-        <div className="text-center py-20 glass rounded-2xl p-6">
-          <p className="text-gray-400">No products found for this brand.</p>
+      {items.length === 0 ? (
+        <div className="mt-12 rounded-3xl border border-dashed border-border bg-card p-10 text-center">
+          <p className="text-base font-semibold">No products listed for {brand.name} yet.</p>
+          <Link to="/contact" className="mt-4 inline-flex rounded-full bg-foreground px-5 py-2.5 text-sm font-semibold text-background">Request a quote</Link>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {products.map((product) => (
-            <ProductCard key={product._id} product={product} />
+        <div className="mt-10 grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-6 lg:grid-cols-4">
+          {items.map((p, i) => (
+            <ProductCard key={p.id} product={p} index={i} />
           ))}
         </div>
       )}
     </div>
   );
-};
-
+}
 export default Brand;

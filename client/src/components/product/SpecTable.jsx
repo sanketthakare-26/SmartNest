@@ -1,34 +1,45 @@
-import React from "react";
+import { motion } from "framer-motion";
 
-const SpecTable = ({ specs = [] }) => {
-  if (!specs || specs.length === 0) {
-    return (
-      <div className="text-gray-500 text-sm italic py-4">
-        No technical specifications listed for this device.
-      </div>
-    );
-  }
+export function SpecTable({ specs }) {
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    show: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.08
+      }
+    }
+  };
+
+  const itemVariants = {
+    hidden: { opacity: 0, y: 10 },
+    show: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 100 } }
+  };
+
+  if (!specs || specs.length === 0) return null;
 
   return (
-    <div className="border border-slate-900 rounded-2xl overflow-hidden glass">
-      <table className="w-full text-left border-collapse">
-        <thead>
-          <tr className="bg-slate-900/50 border-b border-slate-900">
-            <th className="py-3.5 px-5 text-xs font-bold uppercase tracking-wider text-slate-400">Technical Property</th>
-            <th className="py-3.5 px-5 text-xs font-bold uppercase tracking-wider text-slate-400">Specification Value</th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-slate-900 text-sm">
-          {specs.map((spec, idx) => (
-            <tr key={idx} className="hover:bg-slate-800/10 transition-colors">
-              <td className="py-3.5 px-5 font-semibold text-gray-300">{spec.key}</td>
-              <td className="py-3.5 px-5 text-gray-400">{spec.value}</td>
-            </tr>
+    <div className="mt-8 overflow-hidden rounded-3xl border border-border bg-card shadow-card">
+      <div className="border-b border-border bg-secondary/60 px-5 py-3 text-sm font-bold uppercase tracking-wider text-foreground/80">Specifications</div>
+      <motion.table 
+        className="w-full text-sm"
+        variants={containerVariants}
+        initial="hidden"
+        animate="show"
+      >
+        <tbody>
+          {specs.map((s) => (
+            <motion.tr 
+              key={s.label} 
+              className="border-b border-border last:border-0 hover:bg-secondary/20 transition-colors"
+              variants={itemVariants}
+            >
+              <td className="w-1/2 px-5 py-3 font-medium text-muted-foreground">{s.label}</td>
+              <td className="px-5 py-3 font-semibold text-foreground">{s.value}</td>
+            </motion.tr>
           ))}
         </tbody>
-      </table>
+      </motion.table>
     </div>
   );
-};
-
-export default SpecTable;
+}

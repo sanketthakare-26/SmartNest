@@ -1,29 +1,76 @@
-import { createContext, useContext, useEffect, useState } from "react";
-import { auth } from "../lib/firebase";
-import { onAuthStateChanged, signInWithEmailAndPassword, signOut } from "firebase/auth";
+import React, { createContext, useContext, useState, useEffect } from "react";
+import { authApi } from "../lib/api";
 
-const AuthContext = createContext();
+const AuthContext = createContext(undefined);
 
-export function AdminAuthProvider({ children }) {
-  const [user, setUser] = useState(null);
+export const AuthProvider = ({ children }) => {
+  const [token, setToken] = useState(null);
+  const [admin, setAdmin] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const unsub = onAuthStateChanged(auth, (u) => {
-      setUser(u);
+    const verifyToken = async () => {
+      const storedToken = sessionStorage.getItem("smartnest_admin_token");
+      const storedAdmin = sessionStorage.getItem("smartnest_admin_user");
+
+      if (storedToken && storedAdmin) {
+        try {
+          const res = await authApi.me(storedToken);
+          setToken(storedToken);
+          setAdmin(res.admin || JSON.parse(storedAdmin));
+        } catch (err) {
+          console.warn("Session verification failed:", err);
+          // clear expired session
+          sessionStorage.removeItem("smartnest_admin_token");
+          sessionStorage.removeItem("smartnest_admin_user");
+        }
+      }
       setLoading(false);
-    });
-    return unsub;
+    };
+
+    verifyToken();
   }, []);
 
-  const login = (email, pass) => signInWithEmailAndPassword(auth, email, pass);
-  const logout = () => signOut(auth);
+  const login = async (email, password) => {
+    try {
+      const data = await authApi.login(email, password);
+      setToken(data.token);
+      setAdmin(data.admin);
+      sessionStorage.setItem("smartnest_admin_token", data.token);
+      sessionStorage.setItem("smartnest_admin_user", JSON.stringify(data.admin));
+    } catch (err) {
+      throw new Error(err.message || "Invalid credentials");
+    }
+  };
+
+  const logout = async () => {
+    setToken(null);
+    setAdmin(null);
+    sessionStorage.removeItem("smartnest_admin_token");
+    sessionStorage.removeItem("smartnest_admin_user");
+  };
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, loading }}>
-      {!loading && children}
+    <AuthContext.Provider
+      value={{
+        token,
+        admin,
+        isAuthenticated: !!token,
+        loading,
+        login,
+        logout,
+      }}
+    >
+      {children}
     </AuthContext.Provider>
   );
-}
+};
 
-export const useAuth = () => useContext(AuthContext);
+export const useAuth = () => {
+  const context = useContext(AuthContext);
+  if (context === undefined) {
+    throw new Error("useAuth must be used within an AuthProvider");
+  }
+  return context;
+};
+

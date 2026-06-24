@@ -1,59 +1,20 @@
-import React from "react";
-import { ShieldCheck, Headphones, Wrench, EyeOff } from "lucide-react";
-import AnimatedSection from "../common/AnimatedSection";
+import { Users, Star, ShieldCheck, Wrench } from "lucide-react";
 
-const TrustBadges = () => {
-  const badges = [
-    {
-      icon: <ShieldCheck className="w-8 h-8 text-primary" />,
-      title: "3-Year Warranty",
-      desc: "Guaranteed hardware reliability and component coverage.",
-    },
-    {
-      icon: <EyeOff className="w-8 h-8 text-secondary" />,
-      title: "Encrypted & Private",
-      desc: "Local encryption key matching. No data leaves your home.",
-    },
-    {
-      icon: <Wrench className="w-8 h-8 text-primary" />,
-      title: "Professional Fitting",
-      desc: "Optional expert installation and mesh calibration.",
-    },
-    {
-      icon: <Headphones className="w-8 h-8 text-secondary" />,
-      title: "Lifetime Support",
-      desc: "24/7 technical troubleshooting for hubs and integrations.",
-    },
+export function TrustBadges() {
+  const items = [
+    { icon: Users, label: "500+ Installations" },
+    { icon: Star, label: "5-Star Service" },
+    { icon: ShieldCheck, label: "30+ Brands" },
+    { icon: Wrench, label: "Certified Techs" },
   ];
-
   return (
-    <section className="py-16 px-6 md:px-12 bg-[#090D15] border-t border-slate-900/50">
-      <div className="max-w-7xl mx-auto">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-          {badges.map((badge, idx) => (
-            <AnimatedSection
-              key={idx}
-              animation="fade-up"
-              delay={idx * 0.1}
-              className="flex items-start gap-4 p-5 rounded-2xl glass-card border border-slate-900 text-left"
-            >
-              <div className="p-3 bg-slate-950/80 rounded-xl border border-slate-800 shrink-0">
-                {badge.icon}
-              </div>
-              <div className="flex flex-col gap-1">
-                <h4 className="text-white font-bold text-sm tracking-wide">
-                  {badge.title}
-                </h4>
-                <p className="text-gray-400 text-xs leading-relaxed">
-                  {badge.desc}
-                </p>
-              </div>
-            </AnimatedSection>
-          ))}
+    <div className="mt-8 grid grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-3">
+      {items.map((t, i) => (
+        <div key={i} className="flex items-center gap-2 rounded-2xl border border-border bg-background/70 px-3 py-2.5 backdrop-blur">
+          <t.icon className="h-4 w-4 text-primary" />
+          <span className="text-xs font-semibold text-foreground/80">{t.label}</span>
         </div>
-      </div>
-    </section>
+      ))}
+    </div>
   );
-};
-
-export default TrustBadges;
+}

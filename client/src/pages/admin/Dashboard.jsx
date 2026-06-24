@@ -1,803 +1,752 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { useAdminAuth } from "../../context/AdminAuthContext";
-import useFetch from "../../hooks/useFetch";
-import api from "../../lib/api";
-import Button from "../../components/common/Button";
-import Loader from "../../components/common/Loader";
+import { useAuth } from "../../context/AdminAuthContext";
 import {
-  Plus,
-  Trash2,
-  Edit,
+  productsApi,
+  categoriesApi,
+  brandsApi,
+  enquiriesApi,
+} from "../../lib/api";
+import {
+  products as staticProducts,
+  categories as staticCategories,
+  brands as staticBrands,
+} from "../../lib/data";
+import {
+  Package,
   FolderOpen,
   Tag,
-  ClipboardList,
-  Upload,
+  MessageSquare,
+  Plus,
+  Trash2,
+  Edit2,
   LogOut,
-  CheckCircle,
-  AlertCircle,
-  Inbox,
-  Lock,
+  Upload,
+  Check,
+  X,
+  Clock,
+  Eye,
 } from "lucide-react";
+import { toast } from "sonner";
 
-const Dashboard = () => {
-  const { user, logout } = useAdminAuth();
+export function Dashboard() {
+  const { token, isAuthenticated, logout, loading: authLoading } = useAuth();
   const navigate = useNavigate();
 
-  // Tab State: 'products' | 'enquiries' | 'categories_brands'
-  const [activeTab, setActiveTab] = useState("products");
-
-  // Auth Guard: If not authenticated, redirect
+  // Navigation Guard
   useEffect(() => {
-    if (!user) {
+    document.title = "Admin Dashboard — SmartNest";
+    if (!authLoading && !isAuthenticated) {
       navigate("/admin/login");
     }
-  }, [user, navigate]);
+  }, [isAuthenticated, authLoading, navigate]);
 
-  // Data fetching
-  const { data: productsData, refetch: refetchProducts } = useFetch("/products?limit=100");
-  const { data: enquiriesData, refetch: refetchEnquiries } = useFetch("/enquiries");
-  const { data: categoriesData, refetch: refetchCategories } = useFetch("/categories");
-  const { data: brandsData, refetch: refetchBrands } = useFetch("/brands");
+  const [activeTab, setActiveTab] = useState("products");
 
-  // Form toggles
-  const [showProductForm, setShowProductForm] = useState(false);
-  const [editProductId, setEditProductId] = useState(null);
+  // Data States
+  const [products, setProducts] = useState([]);
+  const [categories, setCategories] = useState([]);
+  const [brands, setBrands] = useState([]);
+  const [enquiries, setEnquiries] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  const [showCatForm, setShowCatForm] = useState(false);
-  const [showBrandForm, setShowBrandForm] = useState(false);
-
-  // Form States
+  // Form States (for creating/updating)
+  const [isEditing, setIsEditing] = useState(null); // ID of element being edited, or "new"
   const [productForm, setProductForm] = useState({
     name: "",
     description: "",
-    price: "",
-    category: "",
+    shortDescription: "",
+    categorySlug: "",
     brand: "",
-    featured: false,
-    inStock: true,
+    tag: "",
+    image: "",
+    imagesInput: "",
+    specsInput: "",
   });
-  const [productImages, setProductImages] = useState([]);
-  const [productSpecs, setProductSpecs] = useState([{ key: "", value: "" }]);
 
-  const [categoryForm, setCategoryForm] = useState({ name: "", description: "" });
-  const [categoryImage, setCategoryImage] = useState(null);
+  const [categoryForm, setCategoryForm] = useState({
+    name: "",
+    slug: "",
+    tagline: "",
+  });
 
-  const [brandForm, setBrandForm] = useState({ name: "", description: "" });
-  const [brandLogo, setBrandLogo] = useState(null);
+  const [brandForm, setBrandForm] = useState({
+    name: "",
+    slug: "",
+  });
 
-  // Status/Error Feedback
-  const [feedback, setFeedback] = useState({ type: "", message: "" });
-  const [submitLoading, setSubmitLoading] = useState(false);
+  // Load Data
+  const loadAllData = async () => {
+    setLoading(true);
+    try {
+      if (token) {
+        try {
+          const prodData = await productsApi.getAll();
+          setProducts(prodData.products);
+        } catch {
+          setProducts(staticProducts);
+        }
 
-  if (!user) return <Loader />;
+        try {
+          const catData = await categoriesApi.getAll();
+          setCategories(catData.categories);
+        } catch {
+          setCategories(staticCategories);
+        }
 
-  // Trigger feedback
-  const showFeedback = (type, message) => {
-    setFeedback({ type, message });
-    setTimeout(() => setFeedback({ type: "", message: "" }), 5000);
+        try {
+          const brandData = await brandsApi.getAll();
+          setBrands(brandData.brands);
+        } catch {
+          setBrands(staticBrands);
+        }
+
+        try {
+          const enqData = await enquiriesApi.getAll(token);
+          setEnquiries(enqData.enquiries);
+        } catch {
+          // Initialize mock enquiries in localStorage if they don't exist
+          const mock = localStorage.getItem("smartnest_mock_enquiries");
+          if (mock) {
+            setEnquiries(JSON.parse(mock));
+          } else {
+            const initialMock = [
+              {
+                _id: "mock-1",
+                name: "Rohan Sharma",
+                phone: "+91 98765 43210",
+                email: "rohan@gmail.com",
+                message: "Need a site visit for CCTV installation in my villa.",
+                category: "CCTV & Surveillance",
+                status: "Pending",
+                createdAt: new Date().toISOString(),
+              },
+              {
+                _id: "mock-2",
+                name: "Anjali Gupta",
+                phone: "+91 99999 88888",
+                email: "anjali@yahoo.com",
+                message: "Interested in the Samsung SHP-DP609 smart door lock.",
+                category: "Digital Door Locks",
+                status: "Contacted",
+                createdAt: new Date(Date.now() - 86400000).toISOString(),
+              },
+            ];
+            localStorage.setItem("smartnest_mock_enquiries", JSON.stringify(initialMock));
+            setEnquiries(initialMock);
+          }
+        }
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to sync some data from backend. Using static/local data.");
+    } finally {
+      setLoading(false);
+    }
   };
 
-  // Log out
-  const handleLogout = async () => {
-    await logout();
-    navigate("/");
+  useEffect(() => {
+    if (isAuthenticated && token) {
+      loadAllData();
+    }
+  }, [isAuthenticated, token]);
+
+  if (authLoading || !isAuthenticated) {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <p className="text-sm font-semibold text-muted-foreground">Loading Admin Session...</p>
+      </div>
+    );
+  }
+
+  // Handle Log out
+  const handleLogout = () => {
+    logout();
+    toast.success("Logged out successfully");
+    navigate("/admin/login");
   };
 
-  // Add key-val spec rows
-  const handleAddSpecRow = () => {
-    setProductSpecs([...productSpecs, { key: "", value: "" }]);
-  };
-
-  const handleRemoveSpecRow = (idx) => {
-    setProductSpecs(productSpecs.filter((_, i) => i !== idx));
-  };
-
-  const handleSpecChange = (idx, field, val) => {
-    const updated = [...productSpecs];
-    updated[idx][field] = val;
-    setProductSpecs(updated);
-  };
-
-  // Submit Product Form (Create / Update)
-  const handleProductSubmit = async (e) => {
+  // Product CRUD
+  const saveProduct = async (e) => {
     e.preventDefault();
-    setSubmitLoading(true);
+    if (!token) return;
+
+    // Parse specs: "label: value, label: value"
+    const parsedSpecs = productForm.specsInput
+      .split("\n")
+      .map((line) => {
+        const parts = line.split(":");
+        if (parts.length >= 2) {
+          return { label: parts[0].trim(), value: parts.slice(1).join(":").trim() };
+        }
+        return null;
+      })
+      .filter(Boolean);
+
+    const imgList = productForm.imagesInput
+      .split(",")
+      .map((img) => img.trim())
+      .filter(Boolean);
+
+    const categoryObj = categories.find((c) => c.slug === productForm.categorySlug);
+    const brandObj = brands.find((b) => b.slug === productForm.brand);
 
     const formData = new FormData();
     formData.append("name", productForm.name);
     formData.append("description", productForm.description);
-    formData.append("price", productForm.price);
-    formData.append("category", productForm.category);
-    formData.append("brand", productForm.brand);
-    formData.append("featured", productForm.featured);
-    formData.append("inStock", productForm.inStock);
+    formData.append("shortDescription", productForm.shortDescription);
+    formData.append("price", 199); // default required price
 
-    // Filter blank specifications
-    const cleanSpecs = productSpecs.filter((s) => s.key.trim() !== "");
-    formData.append("specifications", JSON.stringify(cleanSpecs));
-
-    // Append multiple files
-    for (let i = 0; i < productImages.length; i++) {
-      formData.append("images", productImages[i]);
+    if (categoryObj) {
+      formData.append("category", categoryObj._id);
+    } else {
+      formData.append("category", productForm.categorySlug);
     }
 
-    try {
-      if (editProductId) {
-        await api.put(`/products/${editProductId}`, formData, {
-          headers: { "Content-Type": "multipart/form-data" },
-        });
-        showFeedback("success", "Product updated successfully!");
-      } else {
-        await api.post("/products", formData, {
-          headers: { "Content-Type": "multipart/form-data" },
-        });
-        showFeedback("success", "Product created successfully!");
+    if (brandObj) {
+      formData.append("brand", brandObj._id);
+    } else {
+      formData.append("brand", productForm.brand);
+    }
+
+    formData.append("featured", productForm.tag === "Featured" ? "true" : "false");
+    formData.append("inStock", "true");
+
+    const specifications = parsedSpecs.map((s) => ({
+      key: s.label,
+      value: s.value,
+    }));
+    formData.append("specifications", JSON.stringify(specifications));
+
+    formData.append("image", productForm.image || (imgList.length > 0 ? imgList[0] : ""));
+    imgList.forEach((img) => {
+      formData.append("images", img);
+      if (isEditing !== "new") {
+        formData.append("existingImages", img);
       }
-      // Reset
-      setProductForm({ name: "", description: "", price: "", category: "", brand: "", featured: false, inStock: true });
-      setProductImages([]);
-      setProductSpecs([{ key: "", value: "" }]);
-      setEditProductId(null);
-      setShowProductForm(false);
-      refetchProducts();
-    } catch (err) {
-      showFeedback("error", err.response?.data?.message || err.message || "Failed to save product.");
-    } finally {
-      setSubmitLoading(false);
-    }
-  };
+    });
 
-  // Delete Product
-  const handleDeleteProduct = async (id) => {
-    if (!window.confirm("Are you sure you want to delete this product?")) return;
     try {
-      await api.delete(`/products/${id}`);
-      showFeedback("success", "Product deleted successfully");
-      refetchProducts();
+      if (isEditing === "new") {
+        await productsApi.create(formData, token);
+        toast.success("Product created successfully");
+      } else {
+        await productsApi.update(isEditing, formData, token);
+        toast.success("Product updated successfully");
+      }
+      setIsEditing(null);
+      await loadAllData();
     } catch (err) {
-      showFeedback("error", "Failed to delete product.");
+      toast.error(err?.message || "Failed to save product");
     }
   };
 
-  // Trigger edit setup
-  const handleEditProductClick = (prod) => {
-    setEditProductId(prod._id);
+  const deleteProduct = async (id) => {
+    if (confirm("Are you sure you want to delete this product?")) {
+      try {
+        await productsApi.delete(id, token);
+        toast.success("Product deleted");
+        await loadAllData();
+      } catch (err) {
+        toast.error(err?.message || "Failed to delete product");
+      }
+    }
+  };
+
+  const startEditProduct = (prod) => {
+    setIsEditing(prod.id || prod._id);
+    const specsArray = prod.specifications || prod.specs || [];
+    const specsStr = specsArray.map((s) => `${s.key || s.label}: ${s.value}`).join("\n");
+    const imgsStr = prod.images ? prod.images.join(", ") : "";
+
+    const categorySlug = prod.categorySlug || (prod.category && typeof prod.category === "object" ? prod.category.slug : prod.category) || "";
+    const brandSlug = prod.brandSlug || (prod.brand && typeof prod.brand === "object" ? prod.brand.slug : prod.brand) || "";
+
     setProductForm({
       name: prod.name,
-      description: prod.description,
-      price: prod.price,
-      category: prod.category?._id || "",
-      brand: prod.brand?._id || "",
-      featured: prod.featured,
-      inStock: prod.inStock,
+      description: prod.description || prod.shortDescription || "",
+      shortDescription: prod.shortDescription || "",
+      categorySlug: categorySlug,
+      brand: brandSlug,
+      tag: prod.tag || (prod.featured ? "Featured" : ""),
+      image: prod.image || "",
+      imagesInput: imgsStr,
+      specsInput: specsStr,
     });
-    setProductSpecs(prod.specifications.length > 0 ? prod.specifications : [{ key: "", value: "" }]);
-    setShowProductForm(true);
   };
 
-  // Update Enquiry Status (Resolved)
-  const handleResolveEnquiry = async (id) => {
+  const startNewProduct = () => {
+    setIsEditing("new");
+    setProductForm({
+      name: "",
+      description: "",
+      shortDescription: "",
+      categorySlug: categories[0]?.slug || "cctv-surveillance",
+      brand: brands[0]?.slug || "hikvision",
+      tag: "",
+      image: "",
+      imagesInput: "",
+      specsInput: "Warranty: 2 Years Manufacturer\nInstallation: Included",
+    });
+  };
+
+  // Enquiry Update Status & Delete
+  const updateEnquiryStatus = async (id, newStatus) => {
     try {
-      await api.put(`/enquiries/${id}`, { status: "Resolved" });
-      showFeedback("success", "Enquiry marked as Resolved");
-      refetchEnquiries();
+      await enquiriesApi.updateStatus(id, newStatus, token);
+      toast.success(`Enquiry status updated to ${newStatus}`);
+      await loadAllData();
     } catch (err) {
-      showFeedback("error", "Failed to resolve enquiry.");
+      toast.error(err?.message || "Failed to update enquiry status");
     }
   };
 
-  // Delete Enquiry
-  const handleDeleteEnquiry = async (id) => {
-    if (!window.confirm("Delete this enquiry?")) return;
-    try {
-      await api.delete(`/enquiries/${id}`);
-      showFeedback("success", "Enquiry log removed");
-      refetchEnquiries();
-    } catch (err) {
-      showFeedback("error", "Failed to delete enquiry.");
+  const deleteEnquiry = async (id) => {
+    if (confirm("Are you sure you want to delete this enquiry?")) {
+      try {
+        await enquiriesApi.delete(id, token);
+        toast.success("Enquiry deleted");
+        await loadAllData();
+      } catch (err) {
+        toast.error(err?.message || "Failed to delete enquiry");
+      }
     }
   };
 
-  // Submit Category
-  const handleCategorySubmit = async (e) => {
+  const handleAddCategory = async (e) => {
     e.preventDefault();
-    setSubmitLoading(true);
+    if (!categoryForm.name || !token) return;
 
     const formData = new FormData();
     formData.append("name", categoryForm.name);
-    formData.append("description", categoryForm.description);
-    if (categoryImage) {
-      formData.append("image", categoryImage);
-    }
+    formData.append("description", categoryForm.tagline || "");
 
     try {
-      await api.post("/categories", formData, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
-      showFeedback("success", "Category created!");
-      setCategoryForm({ name: "", description: "" });
-      setCategoryImage(null);
-      setShowCatForm(false);
-      refetchCategories();
+      await categoriesApi.create(formData, token);
+      toast.success("Category added successfully");
+      setCategoryForm({ name: "", slug: "", tagline: "" });
+      await loadAllData();
     } catch (err) {
-      showFeedback("error", err.response?.data?.message || "Failed to create category");
-    } finally {
-      setSubmitLoading(false);
+      toast.error(err?.message || "Failed to add category");
     }
   };
 
-  // Submit Brand
-  const handleBrandSubmit = async (e) => {
+  const handleAddBrand = async (e) => {
     e.preventDefault();
-    setSubmitLoading(true);
+    if (!brandForm.name || !token) return;
 
     const formData = new FormData();
     formData.append("name", brandForm.name);
-    formData.append("description", brandForm.description);
-    if (brandLogo) {
-      formData.append("logo", brandLogo);
-    }
 
     try {
-      await api.post("/brands", formData, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
-      showFeedback("success", "Brand created!");
-      setBrandForm({ name: "", description: "" });
-      setBrandLogo(null);
-      setShowBrandForm(false);
-      refetchBrands();
+      await brandsApi.create(formData, token);
+      toast.success("Brand added successfully");
+      setBrandForm({ name: "", slug: "" });
+      await loadAllData();
     } catch (err) {
-      showFeedback("error", err.response?.data?.message || "Failed to create brand");
-    } finally {
-      setSubmitLoading(false);
+      toast.error(err?.message || "Failed to add brand");
     }
   };
 
   return (
-    <div className="py-12 px-6 md:px-12 max-w-7xl mx-auto min-h-screen text-left">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center border-b border-slate-900 pb-6 mb-8 gap-4">
-        <div>
-          <h1 className="text-3xl font-extrabold text-white flex items-center gap-2">
-            <Lock className="text-primary w-7 h-7" />
-            <span>Admin Center</span>
-          </h1>
-          <p className="text-xs text-gray-500 mt-1">Logged in as {user.email}</p>
-        </div>
-        <Button onClick={handleLogout} variant="outline" size="sm" className="text-red-400 border-red-500/20 hover:bg-red-500/10">
-          <LogOut size={16} className="mr-2" />
-          <span>Exit Dashboard</span>
-        </Button>
-      </div>
-
-      {/* Global Feedback */}
-      {feedback.message && (
-        <div className={`p-4 rounded-xl border flex items-start gap-2 text-sm mb-6 ${
-          feedback.type === "success"
-            ? "bg-green-500/10 text-green-400 border-green-500/20"
-            : "bg-red-500/10 text-red-400 border-red-500/20"
-        }`}>
-          {feedback.type === "success" ? <CheckCircle size={18} /> : <AlertCircle size={18} />}
-          <span>{feedback.message}</span>
-        </div>
-      )}
-
-      {/* Tabs */}
-      <div className="flex gap-4 border-b border-slate-900 pb-4 mb-8">
-        <button
-          onClick={() => setActiveTab("products")}
-          className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition ${
-            activeTab === "products" ? "bg-primary text-dark" : "text-gray-400 hover:text-white hover:bg-slate-900"
-          }`}
-        >
-          <FolderOpen size={16} />
-          <span>Products</span>
-        </button>
-        <button
-          onClick={() => setActiveTab("enquiries")}
-          className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition ${
-            activeTab === "enquiries" ? "bg-primary text-dark" : "text-gray-400 hover:text-white hover:bg-slate-900"
-          }`}
-        >
-          <ClipboardList size={16} />
-          <span>Enquiries ({enquiriesData?.length || 0})</span>
-        </button>
-        <button
-          onClick={() => setActiveTab("categories_brands")}
-          className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition ${
-            activeTab === "categories_brands" ? "bg-primary text-dark" : "text-gray-400 hover:text-white hover:bg-slate-900"
-          }`}
-        >
-          <Tag size={16} />
-          <span>Categories & Brands</span>
-        </button>
-      </div>
-
-      {/* PRODUCT MANAGEMENT TAB */}
-      {activeTab === "products" && (
-        <div className="flex flex-col gap-6">
-          <div className="flex justify-between items-center">
-            <h3 className="text-xl font-bold text-white">Device Directory</h3>
-            {!showProductForm && (
-              <Button onClick={() => { setShowProductForm(true); setEditProductId(null); }} variant="primary" size="sm">
-                <Plus size={16} className="mr-1.5" />
-                <span>Add Product</span>
-              </Button>
-            )}
+    <div className="min-h-screen bg-secondary/15 flex flex-col md:flex-row">
+      {/* Side Menu */}
+      <aside className="w-full md:w-64 bg-card border-r border-border flex flex-col shrink-0">
+        <div className="p-6 border-b border-border flex items-center justify-between">
+          <div>
+            <h2 className="font-extrabold text-base tracking-tight">SmartNest Admin</h2>
+            <p className="text-xs text-muted-foreground">Management Console</p>
           </div>
+        </div>
 
-          {showProductForm && (
-            <form onSubmit={handleProductSubmit} className="glass-card p-6 rounded-2xl border border-slate-900 flex flex-col gap-6 mb-8">
-              <h4 className="text-lg font-bold text-white border-b border-slate-900 pb-3">
-                {editProductId ? "Edit Smart Device" : "Create New Smart Device"}
-              </h4>
+        <nav className="flex-1 p-4 space-y-1">
+          <TabButton
+            active={activeTab === "products"}
+            onClick={() => { setActiveTab("products"); setIsEditing(null); }}
+            icon={Package}
+            label="Products"
+          />
+          <TabButton
+            active={activeTab === "categories"}
+            onClick={() => { setActiveTab("categories"); setIsEditing(null); }}
+            icon={FolderOpen}
+            label="Categories"
+          />
+          <TabButton
+            active={activeTab === "brands"}
+            onClick={() => { setActiveTab("brands"); setIsEditing(null); }}
+            icon={Tag}
+            label="Brands"
+          />
+          <TabButton
+            active={activeTab === "enquiries"}
+            onClick={() => { setActiveTab("enquiries"); setIsEditing(null); }}
+            icon={MessageSquare}
+            label="Enquiries"
+            badgeCount={enquiries.filter((e) => e.status === "Pending").length}
+          />
+        </nav>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                {/* Name */}
-                <div className="flex flex-col gap-1.5 md:col-span-2">
-                  <label className="text-xs font-semibold text-gray-400">Device Name</label>
-                  <input
-                    type="text"
-                    required
-                    value={productForm.name}
-                    onChange={(e) => setProductForm({ ...productForm, name: e.target.value })}
-                    className="bg-slate-900 border border-slate-800 focus:border-primary px-3 py-2.5 rounded-lg text-sm text-white focus:outline-none"
-                    placeholder="Nest Hub Console"
-                  />
-                </div>
+        <div className="p-4 border-t border-border mt-auto">
+          <button
+            onClick={handleLogout}
+            className="flex w-full items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold text-destructive hover:bg-destructive/10 transition"
+          >
+            <LogOut className="h-4 w-4" />
+            Logout
+          </button>
+        </div>
+      </aside>
 
-                {/* Price */}
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-xs font-semibold text-gray-400">Price (USD)</label>
-                  <input
-                    type="number"
-                    required
-                    value={productForm.price}
-                    onChange={(e) => setProductForm({ ...productForm, price: e.target.value })}
-                    className="bg-slate-900 border border-slate-800 focus:border-primary px-3 py-2.5 rounded-lg text-sm text-white focus:outline-none"
-                    placeholder="299"
-                  />
-                </div>
-
-                {/* Category */}
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-xs font-semibold text-gray-400">Category</label>
-                  <select
-                    required
-                    value={productForm.category}
-                    onChange={(e) => setProductForm({ ...productForm, category: e.target.value })}
-                    className="bg-slate-900 border border-slate-800 focus:border-primary px-3 py-2.5 rounded-lg text-sm text-gray-300 focus:outline-none"
-                  >
-                    <option value="">Choose category...</option>
-                    {categoriesData?.map((cat) => (
-                      <option key={cat._id} value={cat._id}>{cat.name}</option>
-                    ))}
-                  </select>
-                </div>
-
-                {/* Brand */}
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-xs font-semibold text-gray-400">Brand / Maker</label>
-                  <select
-                    required
-                    value={productForm.brand}
-                    onChange={(e) => setProductForm({ ...productForm, brand: e.target.value })}
-                    className="bg-slate-900 border border-slate-800 focus:border-primary px-3 py-2.5 rounded-lg text-sm text-gray-300 focus:outline-none"
-                  >
-                    <option value="">Choose brand...</option>
-                    {brandsData?.map((b) => (
-                      <option key={b._id} value={b._id}>{b.name}</option>
-                    ))}
-                  </select>
-                </div>
-
-                {/* Checkboxes */}
-                <div className="flex gap-6 items-center mt-6">
-                  <label className="flex items-center gap-2 text-sm text-gray-300 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={productForm.featured}
-                      onChange={(e) => setProductForm({ ...productForm, featured: e.target.checked })}
-                      className="accent-primary"
-                    />
-                    <span>Featured Hero Device</span>
-                  </label>
-                  <label className="flex items-center gap-2 text-sm text-gray-300 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={productForm.inStock}
-                      onChange={(e) => setProductForm({ ...productForm, inStock: e.target.checked })}
-                      className="accent-primary"
-                    />
-                    <span>In Stock</span>
-                  </label>
-                </div>
-
-                {/* Description */}
-                <div className="flex flex-col gap-1.5 md:col-span-3">
-                  <label className="text-xs font-semibold text-gray-400">Description</label>
-                  <textarea
-                    required
-                    rows={4}
-                    value={productForm.description}
-                    onChange={(e) => setProductForm({ ...productForm, description: e.target.value })}
-                    className="bg-slate-900 border border-slate-800 focus:border-primary px-3 py-2.5 rounded-lg text-sm text-white focus:outline-none resize-none"
-                    placeholder="Enter details..."
-                  />
-                </div>
-
-                {/* Images Upload */}
-                <div className="flex flex-col gap-1.5 md:col-span-3">
-                  <label className="text-xs font-semibold text-gray-400">Upload Product Images (Max 5)</label>
-                  <div className="border-2 border-dashed border-slate-850 hover:border-primary/20 rounded-xl p-6 flex flex-col items-center justify-center gap-2 cursor-pointer bg-slate-950/20">
-                    <Upload className="text-gray-500 w-8 h-8" />
-                    <span className="text-xs text-gray-400">Drag files here or click to select files</span>
-                    <input
-                      type="file"
-                      multiple
-                      accept="image/*"
-                      onChange={(e) => setProductImages(Array.from(e.target.files))}
-                      className="mt-1 text-xs text-gray-400 file:mr-4 file:py-1 file:px-3 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-slate-850 file:text-gray-300 hover:file:bg-slate-800"
-                    />
-                  </div>
-                </div>
-
-                {/* Technical Specifications Specs */}
-                <div className="flex flex-col gap-3 md:col-span-3">
-                  <div className="flex justify-between items-center">
-                    <label className="text-xs font-semibold text-gray-400">Specifications (Key / Value)</label>
-                    <button
-                      type="button"
-                      onClick={handleAddSpecRow}
-                      className="text-xs text-primary hover:underline font-semibold"
-                    >
-                      + Add Row
-                    </button>
-                  </div>
-
-                  {productSpecs.map((spec, idx) => (
-                    <div key={idx} className="flex gap-3 items-center">
-                      <input
-                        type="text"
-                        placeholder="e.g. Battery Life"
-                        value={spec.key}
-                        onChange={(e) => handleSpecChange(idx, "key", e.target.value)}
-                        className="bg-slate-900 border border-slate-800 focus:border-primary px-3 py-2 rounded-lg text-xs text-white focus:outline-none w-1/2"
-                      />
-                      <input
-                        type="text"
-                        placeholder="e.g. 12 Hours"
-                        value={spec.value}
-                        onChange={(e) => handleSpecChange(idx, "value", e.target.value)}
-                        className="bg-slate-900 border border-slate-800 focus:border-primary px-3 py-2 rounded-lg text-xs text-white focus:outline-none w-1/2"
-                      />
+      {/* Main Content Area */}
+      <main className="flex-1 p-6 md:p-10 overflow-y-auto max-w-7xl">
+        {loading ? (
+          <div className="h-full flex items-center justify-center py-20">
+            <p className="text-sm text-muted-foreground font-semibold">Loading data...</p>
+          </div>
+        ) : (
+          <div>
+            {/* Products Tab */}
+            {activeTab === "products" && (
+              <div>
+                {!isEditing ? (
+                  <div className="space-y-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h1 className="text-2xl font-extrabold tracking-tight">Products Catalog</h1>
+                        <p className="text-sm text-muted-foreground mt-0.5">Manage products showcased on your website.</p>
+                      </div>
                       <button
-                        type="button"
-                        onClick={() => handleRemoveSpecRow(idx)}
-                        className="text-red-400 hover:text-red-300 text-xs font-semibold"
+                        onClick={startNewProduct}
+                        className="inline-flex items-center gap-2 bg-foreground text-background font-semibold rounded-full px-5 py-2.5 text-sm transition hover:opacity-90 active:scale-95 shadow-soft"
                       >
-                        Delete
+                        <Plus className="h-4 w-4" /> Add Product
                       </button>
                     </div>
-                  ))}
-                </div>
-              </div>
 
-              <div className="flex justify-end gap-3 mt-4 pt-4 border-t border-slate-900">
-                <Button
-                  onClick={() => { setShowProductForm(false); setEditProductId(null); }}
-                  variant="outline"
-                  size="sm"
-                >
-                  Cancel
-                </Button>
-                <Button
-                  type="submit"
-                  variant="primary"
-                  size="sm"
-                  loading={submitLoading}
-                >
-                  {editProductId ? "Save Changes" : "Publish Device"}
-                </Button>
-              </div>
-            </form>
-          )}
-
-          {/* Catalog grid table view */}
-          <div className="border border-slate-900 rounded-2xl overflow-hidden glass">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="bg-slate-900/50 border-b border-slate-900 text-xs font-bold uppercase tracking-wider text-slate-400">
-                  <th className="py-3 px-5">Name</th>
-                  <th className="py-3 px-5">Category</th>
-                  <th className="py-3 px-5">Brand</th>
-                  <th className="py-3 px-5">Price</th>
-                  <th className="py-3 px-5 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-900 text-sm">
-                {productsData?.products?.map((p) => (
-                  <tr key={p._id} className="hover:bg-slate-800/10">
-                    <td className="py-3 px-5 text-white font-semibold">{p.name}</td>
-                    <td className="py-3 px-5 text-gray-400">{p.category?.name || "-"}</td>
-                    <td className="py-3 px-5 text-gray-400">{p.brand?.name || "-"}</td>
-                    <td className="py-3 px-5 text-primary font-bold">${p.price}</td>
-                    <td className="py-3 px-5 text-right">
-                      <div className="inline-flex gap-2">
-                        <button
-                          onClick={() => handleEditProductClick(p)}
-                          className="p-1.5 bg-slate-905 border border-slate-850 hover:border-primary/20 text-gray-400 hover:text-primary rounded-lg transition"
-                          title="Edit"
-                        >
-                          <Edit size={14} />
-                        </button>
-                        <button
-                          onClick={() => handleDeleteProduct(p._id)}
-                          className="p-1.5 bg-slate-905 border border-slate-850 hover:border-red-500/20 text-gray-400 hover:text-red-400 rounded-lg transition"
-                          title="Delete"
-                        >
-                          <Trash2 size={14} />
-                        </button>
+                    <div className="border border-border rounded-2xl bg-card overflow-hidden shadow-card">
+                      <table className="w-full text-left border-collapse text-sm">
+                        <thead>
+                          <tr className="bg-secondary/40 border-b border-border text-muted-foreground font-semibold">
+                            <th className="px-6 py-3.5">Image</th>
+                            <th className="px-6 py-3.5">Name</th>
+                            <th className="px-6 py-3.5">Brand</th>
+                            <th className="px-6 py-3.5">Category</th>
+                            <th className="px-6 py-3.5">Tag</th>
+                            <th className="px-6 py-3.5 text-right">Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {products.map((p) => (
+                            <tr key={p.id || p._id} className="border-b border-border last:border-0 hover:bg-secondary/10 transition-colors">
+                              <td className="px-6 py-3">
+                                <img src={p.image} alt="" className="h-10 w-10 rounded-lg object-cover border border-border bg-muted" />
+                              </td>
+                              <td className="px-6 py-3 font-semibold text-foreground max-w-[200px] truncate">{p.name}</td>
+                              <td className="px-6 py-3 text-muted-foreground capitalize">
+                                {typeof p.brand === "object" ? p.brand?.name : (brands.find((b) => b.slug === p.brand || b._id === p.brand)?.name || p.brand)}
+                              </td>
+                              <td className="px-6 py-3 text-muted-foreground">
+                                {p.category?.name || categories.find((c) => c.slug === p.categorySlug || c._id === p.category)?.name || p.categorySlug}
+                              </td>
+                              <td className="px-6 py-3">
+                                {p.tag && <span className="rounded-full bg-secondary px-2.5 py-0.5 text-xs font-semibold">{p.tag}</span>}
+                              </td>
+                              <td className="px-6 py-3 text-right">
+                                <div className="inline-flex items-center gap-1.5">
+                                  <button onClick={() => startEditProduct(p)} className="p-2 text-foreground/80 hover:text-foreground hover:bg-secondary rounded-xl transition" title="Edit">
+                                    <Edit2 className="h-4 w-4" />
+                                  </button>
+                                  <button onClick={() => deleteProduct(p.id || p._id)} className="p-2 text-destructive hover:bg-destructive/10 rounded-xl transition" title="Delete">
+                                    <Trash2 className="h-4 w-4" />
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                ) : (
+                  // Product Edit Form
+                  <div className="space-y-6 max-w-2xl bg-card border border-border rounded-3xl p-6 sm:p-8 shadow-card">
+                    <div className="flex items-center justify-between border-b border-border pb-4">
+                      <div>
+                        <h2 className="text-xl font-bold">{isEditing === "new" ? "Add New Product" : "Edit Product"}</h2>
+                        <p className="text-xs text-muted-foreground mt-0.5">Fill in details for this product.</p>
                       </div>
-                    </td>
-                  </tr>
-                ))}
-                {!productsData?.products?.length && (
-                  <tr>
-                    <td colSpan={5} className="py-12 text-center text-gray-500 italic">
-                      No devices published in the database.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-
-      {/* ENQUIRIES TAB */}
-      {activeTab === "enquiries" && (
-        <div className="flex flex-col gap-6">
-          <h3 className="text-xl font-bold text-white">Customer Enquiries</h3>
-
-          <div className="flex flex-col gap-4">
-            {enquiriesData?.map((enq) => (
-              <div
-                key={enq._id}
-                className="glass-card p-6 rounded-2xl border border-slate-900 flex flex-col gap-4 text-left relative"
-              >
-                {/* Header info */}
-                <div className="flex flex-wrap items-start justify-between gap-2">
-                  <div>
-                    <h4 className="text-white font-bold text-base">{enq.name}</h4>
-                    <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-500 mt-1">
-                      <span>{enq.email}</span>
-                      <span>{enq.phone}</span>
-                      <span>{new Date(enq.createdAt).toLocaleDateString()}</span>
+                      <button onClick={() => setIsEditing(null)} className="p-2 hover:bg-secondary rounded-xl transition">
+                        <X className="h-5 w-5" />
+                      </button>
                     </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded border ${
-                      enq.status === "Resolved"
-                        ? "bg-green-500/10 text-green-400 border-green-500/20"
-                        : "bg-yellow-500/10 text-yellow-400 border-yellow-500/20"
-                    }`}>
-                      {enq.status}
-                    </span>
-                  </div>
-                </div>
 
-                {/* Linked Device */}
-                {enq.product && (
-                  <div className="bg-slate-950/45 px-4 py-2.5 rounded-lg border border-slate-900 text-xs w-fit">
-                    <span className="text-gray-500">Interested in: </span>
-                    <span className="text-primary font-semibold">{enq.product.name}</span>
-                    <span className="text-gray-400 font-bold ml-1.5">${enq.product.price}</span>
+                    <form onSubmit={saveProduct} className="space-y-4">
+                      <div className="grid gap-4 sm:grid-cols-2">
+                        <div className="space-y-1">
+                          <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Product Name</label>
+                          <input required value={productForm.name} onChange={(e) => setProductForm({ ...productForm, name: e.target.value })} className="h-11 w-full rounded-xl border border-border bg-background px-3.5 text-sm outline-none focus:border-primary" />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Product Tag</label>
+                          <select value={productForm.tag} onChange={(e) => setProductForm({ ...productForm, tag: e.target.value })} className="h-11 w-full rounded-xl border border-border bg-background px-3.5 text-sm outline-none focus:border-primary">
+                            <option value="">None</option>
+                            <option value="Top Seller">Top Seller</option>
+                            <option value="Trending">Trending</option>
+                            <option value="Featured">Featured</option>
+                            <option value="New">New</option>
+                          </select>
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Category</label>
+                          <select value={productForm.categorySlug} onChange={(e) => setProductForm({ ...productForm, categorySlug: e.target.value })} className="h-11 w-full rounded-xl border border-border bg-background px-3.5 text-sm outline-none focus:border-primary">
+                            {categories.map((c) => (
+                              <option key={c.slug} value={c.slug}>{c.name}</option>
+                            ))}
+                          </select>
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Brand</label>
+                          <select value={productForm.brand} onChange={(e) => setProductForm({ ...productForm, brand: e.target.value })} className="h-11 w-full rounded-xl border border-border bg-background px-3.5 text-sm outline-none focus:border-primary">
+                            {brands.map((b) => (
+                              <option key={b.slug} value={b.slug}>{b.name}</option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Primary Image URL</label>
+                        <input value={productForm.image} onChange={(e) => setProductForm({ ...productForm, image: e.target.value })} placeholder="Paste main image link" className="h-11 w-full rounded-xl border border-border bg-background px-3.5 text-sm outline-none focus:border-primary" />
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Gallery Image URLs (Comma Separated)</label>
+                        <input value={productForm.imagesInput} onChange={(e) => setProductForm({ ...productForm, imagesInput: e.target.value })} placeholder="URL 1, URL 2, URL 3" className="h-11 w-full rounded-xl border border-border bg-background px-3.5 text-sm outline-none focus:border-primary" />
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Short Description</label>
+                        <input required value={productForm.shortDescription} onChange={(e) => setProductForm({ ...productForm, shortDescription: e.target.value })} className="h-11 w-full rounded-xl border border-border bg-background px-3.5 text-sm outline-none focus:border-primary" />
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Detailed Description</label>
+                        <textarea rows={3} value={productForm.description} onChange={(e) => setProductForm({ ...productForm, description: e.target.value })} className="w-full rounded-xl border border-border bg-background px-3.5 py-2.5 text-sm outline-none focus:border-primary" />
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Specifications (One per line as: Label: Value)</label>
+                        <textarea rows={4} value={productForm.specsInput} onChange={(e) => setProductForm({ ...productForm, specsInput: e.target.value })} placeholder="Warranty: 2 Years&#10;Resolution: 4MP&#10;Night Vision: 30m" className="w-full rounded-xl border border-border bg-background px-3.5 py-2.5 text-sm outline-none focus:border-primary font-mono text-xs" />
+                      </div>
+
+                      <div className="flex justify-end gap-3 border-t border-border pt-4">
+                        <button type="button" onClick={() => setIsEditing(null)} className="rounded-xl border border-border bg-card px-5 py-2.5 text-sm font-semibold hover:bg-secondary transition active:scale-95">Cancel</button>
+                        <button type="submit" className="rounded-xl bg-foreground text-background px-5 py-2.5 text-sm font-semibold hover:opacity-95 transition active:scale-95">Save Product</button>
+                      </div>
+                    </form>
                   </div>
                 )}
+              </div>
+            )}
 
-                {/* Message */}
-                <div className="text-sm text-gray-300 bg-slate-950/20 p-4 rounded-xl border border-slate-900/50 leading-relaxed italic">
-                  "{enq.message}"
+            {/* Categories Tab */}
+            {activeTab === "categories" && (
+              <div className="space-y-6">
+                <div>
+                  <h1 className="text-2xl font-extrabold tracking-tight">Categories</h1>
+                  <p className="text-sm text-muted-foreground mt-0.5">Manage smart home product categories.</p>
                 </div>
 
-                {/* Actions */}
-                <div className="flex justify-end gap-3 pt-3 border-t border-slate-900/60">
-                  {enq.status !== "Resolved" && (
-                    <Button onClick={() => handleResolveEnquiry(enq._id)} variant="outline" size="sm" className="text-green-400 border-green-500/10 hover:bg-green-500/10">
-                      Mark Resolved
-                    </Button>
-                  )}
-                  <Button onClick={() => handleDeleteEnquiry(enq._id)} variant="ghost" size="sm" className="text-red-400 hover:bg-red-500/10">
-                    <Trash2 size={14} className="mr-1.5" />
-                    <span>Delete log</span>
-                  </Button>
+                <div className="grid gap-6 md:grid-cols-[1.5fr_1fr]">
+                  <div className="border border-border rounded-2xl bg-card overflow-hidden shadow-card">
+                    <table className="w-full text-left border-collapse text-sm">
+                      <thead>
+                        <tr className="bg-secondary/40 border-b border-border text-muted-foreground font-semibold">
+                          <th className="px-6 py-3.5">Name</th>
+                          <th className="px-6 py-3.5">Slug</th>
+                          <th className="px-6 py-3.5">Tagline</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {categories.map((c) => (
+                          <tr key={c.slug} className="border-b border-border last:border-0 hover:bg-secondary/10 transition-colors">
+                            <td className="px-6 py-3 font-semibold text-foreground">{c.name}</td>
+                            <td className="px-6 py-3 text-muted-foreground">{c.slug}</td>
+                            <td className="px-6 py-3 text-muted-foreground max-w-[200px] truncate">{c.tagline || c.description}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  <div className="bg-card border border-border rounded-2xl p-6 shadow-card h-fit">
+                    <h3 className="font-bold text-base mb-4">Add Category</h3>
+                    <form onSubmit={handleAddCategory} className="space-y-4">
+                      <div className="space-y-1">
+                        <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Category Name</label>
+                        <input required value={categoryForm.name} onChange={(e) => setCategoryForm({ ...categoryForm, name: e.target.value, slug: e.target.value.toLowerCase().replace(/[^a-z0-9]+/g, "-") })} className="h-10 w-full rounded-xl border border-border bg-background px-3 text-sm outline-none focus:border-primary" />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Slug</label>
+                        <input required value={categoryForm.slug} onChange={(e) => setCategoryForm({ ...categoryForm, slug: e.target.value })} className="h-10 w-full rounded-xl border border-border bg-background px-3 text-sm outline-none focus:border-primary" />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Tagline</label>
+                        <input value={categoryForm.tagline} onChange={(e) => setCategoryForm({ ...categoryForm, tagline: e.target.value })} className="h-10 w-full rounded-xl border border-border bg-background px-3 text-sm outline-none focus:border-primary" />
+                      </div>
+                      <button type="submit" className="w-full h-10 rounded-xl bg-foreground text-background font-semibold text-sm hover:opacity-90 active:scale-95 transition">Add Category</button>
+                    </form>
+                  </div>
                 </div>
               </div>
-            ))}
+            )}
 
-            {!enquiriesData?.length && (
-              <div className="flex flex-col items-center justify-center p-16 bg-slate-950/20 border border-slate-900 rounded-2xl text-center gap-3">
-                <Inbox className="text-gray-600 w-10 h-10" />
-                <p className="text-gray-500 italic text-sm">No customer enquiries received yet.</p>
+            {/* Brands Tab */}
+            {activeTab === "brands" && (
+              <div className="space-y-6">
+                <div>
+                  <h1 className="text-2xl font-extrabold tracking-tight">Brands</h1>
+                  <p className="text-sm text-muted-foreground mt-0.5">Manage partner smart home automation brands.</p>
+                </div>
+
+                <div className="grid gap-6 md:grid-cols-[1.5fr_1fr]">
+                  <div className="border border-border rounded-2xl bg-card overflow-hidden shadow-card">
+                    <table className="w-full text-left border-collapse text-sm">
+                      <thead>
+                        <tr className="bg-secondary/40 border-b border-border text-muted-foreground font-semibold">
+                          <th className="px-6 py-3.5">Name</th>
+                          <th className="px-6 py-3.5">Slug</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {brands.map((b) => (
+                          <tr key={b.slug} className="border-b border-border last:border-0 hover:bg-secondary/10 transition-colors">
+                            <td className="px-6 py-3 font-semibold text-foreground">{b.name}</td>
+                            <td className="px-6 py-3 text-muted-foreground">{b.slug}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  <div className="bg-card border border-border rounded-2xl p-6 shadow-card h-fit">
+                    <h3 className="font-bold text-base mb-4">Add Brand</h3>
+                    <form onSubmit={handleAddBrand} className="space-y-4">
+                      <div className="space-y-1">
+                        <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Brand Name</label>
+                        <input required value={brandForm.name} onChange={(e) => setBrandForm({ ...brandForm, name: e.target.value, slug: e.target.value.toLowerCase().replace(/[^a-z0-9]+/g, "-") })} className="h-10 w-full rounded-xl border border-border bg-background px-3 text-sm outline-none focus:border-primary" />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Slug</label>
+                        <input required value={brandForm.slug} onChange={(e) => setBrandForm({ ...brandForm, slug: e.target.value })} className="h-10 w-full rounded-xl border border-border bg-background px-3 text-sm outline-none focus:border-primary" />
+                      </div>
+                      <button type="submit" className="w-full h-10 rounded-xl bg-foreground text-background font-semibold text-sm hover:opacity-90 active:scale-95 transition">Add Brand</button>
+                    </form>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Enquiries Tab */}
+            {activeTab === "enquiries" && (
+              <div className="space-y-6">
+                <div>
+                  <h1 className="text-2xl font-extrabold tracking-tight">Customer Enquiries</h1>
+                  <p className="text-sm text-muted-foreground mt-0.5">Review lead forms and WhatsApp callback requests.</p>
+                </div>
+
+                <div className="border border-border rounded-2xl bg-card overflow-hidden shadow-card">
+                  <table className="w-full text-left border-collapse text-sm">
+                    <thead>
+                      <tr className="bg-secondary/40 border-b border-border text-muted-foreground font-semibold">
+                        <th className="px-6 py-3.5">Customer</th>
+                        <th className="px-6 py-3.5">Contact info</th>
+                        <th className="px-6 py-3.5">Category Interest</th>
+                        <th className="px-6 py-3.5">Enquiry Date</th>
+                        <th className="px-6 py-3.5">Status</th>
+                        <th className="px-6 py-3.5 text-right">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {enquiries.map((e) => (
+                        <tr key={e._id} className="border-b border-border last:border-0 hover:bg-secondary/10 transition-colors">
+                          <td className="px-6 py-3.5">
+                            <div className="font-semibold text-foreground">{e.name}</div>
+                            {e.message && <p className="text-xs text-muted-foreground max-w-sm mt-1 whitespace-pre-line italic">"{e.message}"</p>}
+                          </td>
+                          <td className="px-6 py-3.5">
+                            <div className="text-xs text-foreground font-medium">{e.phone}</div>
+                            {e.email && <div className="text-xs text-muted-foreground">{e.email}</div>}
+                          </td>
+                          <td className="px-6 py-3.5 text-muted-foreground">{e.category || "General"}</td>
+                          <td className="px-6 py-3.5 text-xs text-muted-foreground">{new Date(e.createdAt).toLocaleDateString()}</td>
+                          <td className="px-6 py-3.5">
+                            <select
+                              value={e.status || "Pending"}
+                              onChange={(evt) => updateEnquiryStatus(e._id, evt.target.value)}
+                              className={`rounded-full px-2.5 py-1 text-xs font-semibold outline-none border border-border ${
+                                e.status === "Completed"
+                                  ? "bg-mint-soft text-foreground"
+                                  : e.status === "Contacted"
+                                  ? "bg-amber-soft text-foreground"
+                                  : "bg-secondary text-foreground"
+                              }`}
+                            >
+                              <option value="Pending">Pending</option>
+                              <option value="Contacted">Contacted</option>
+                              <option value="Completed">Completed</option>
+                            </select>
+                          </td>
+                          <td className="px-6 py-3.5 text-right">
+                            <button onClick={() => deleteEnquiry(e._id)} className="p-2 text-destructive hover:bg-destructive/10 rounded-xl transition" title="Delete">
+                              <Trash2 className="h-4.5 w-4.5" />
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                      {enquiries.length === 0 && (
+                        <tr>
+                          <td colSpan={6} className="px-6 py-12 text-center text-muted-foreground font-medium">No customer enquiries received yet.</td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             )}
           </div>
-        </div>
-      )}
-
-      {/* CATEGORIES & BRANDS TAB */}
-      {activeTab === "categories_brands" && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
-          {/* Categories Manager */}
-          <div className="flex flex-col gap-6">
-            <div className="flex justify-between items-center">
-              <h3 className="text-lg font-bold text-white">Categories</h3>
-              {!showCatForm && (
-                <button
-                  onClick={() => setShowCatForm(true)}
-                  className="text-xs text-primary hover:underline font-semibold"
-                >
-                  + Create Category
-                </button>
-              )}
-            </div>
-
-            {showCatForm && (
-              <form onSubmit={handleCategorySubmit} className="glass-card p-5 rounded-2xl border border-slate-900 flex flex-col gap-4">
-                <h4 className="text-sm font-bold text-white">Create Category</h4>
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-xs text-gray-500">Category Name</label>
-                  <input
-                    type="text"
-                    required
-                    value={categoryForm.name}
-                    onChange={(e) => setCategoryForm({ ...categoryForm, name: e.target.value })}
-                    className="bg-slate-900 border border-slate-800 focus:border-primary px-3 py-2 rounded-lg text-xs text-white focus:outline-none"
-                    placeholder="Lighting & Ambience"
-                  />
-                </div>
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-xs text-gray-500">Description</label>
-                  <textarea
-                    rows={3}
-                    value={categoryForm.description}
-                    onChange={(e) => setCategoryForm({ ...categoryForm, description: e.target.value })}
-                    className="bg-slate-900 border border-slate-800 focus:border-primary px-3 py-2 rounded-lg text-xs text-white focus:outline-none resize-none"
-                    placeholder="Short description..."
-                  />
-                </div>
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-xs text-gray-500">Category Image</label>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={(e) => setCategoryImage(e.target.files[0])}
-                    className="text-xs text-gray-400"
-                  />
-                </div>
-                <div className="flex justify-end gap-2 mt-2">
-                  <button
-                    type="button"
-                    onClick={() => setShowCatForm(false)}
-                    className="text-xs text-gray-400 hover:text-white px-2"
-                  >
-                    Cancel
-                  </button>
-                  <Button type="submit" variant="primary" size="sm" loading={submitLoading}>
-                    Save Category
-                  </Button>
-                </div>
-              </form>
-            )}
-
-            <div className="border border-slate-900 rounded-2xl overflow-hidden glass">
-              <div className="bg-slate-900/50 p-4 border-b border-slate-900 text-xs font-bold uppercase tracking-wider text-slate-400">
-                Category List
-              </div>
-              <ul className="divide-y divide-slate-900">
-                {categoriesData?.map((cat) => (
-                  <li key={cat._id} className="p-4 flex items-center justify-between text-sm">
-                    <div>
-                      <span className="font-bold text-white">{cat.name}</span>
-                      <span className="text-xs text-gray-500 block">{cat.description || "No description"}</span>
-                    </div>
-                  </li>
-                ))}
-                {!categoriesData?.length && (
-                  <li className="p-8 text-center text-xs text-gray-500 italic">No categories created yet.</li>
-                )}
-              </ul>
-            </div>
-          </div>
-
-          {/* Brands Manager */}
-          <div className="flex flex-col gap-6">
-            <div className="flex justify-between items-center">
-              <h3 className="text-lg font-bold text-white">Brands</h3>
-              {!showBrandForm && (
-                <button
-                  onClick={() => setShowBrandForm(true)}
-                  className="text-xs text-primary hover:underline font-semibold"
-                >
-                  + Create Brand
-                </button>
-              )}
-            </div>
-
-            {showBrandForm && (
-              <form onSubmit={handleBrandSubmit} className="glass-card p-5 rounded-2xl border border-slate-900 flex flex-col gap-4">
-                <h4 className="text-sm font-bold text-white">Create Brand</h4>
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-xs text-gray-500">Brand Name</label>
-                  <input
-                    type="text"
-                    required
-                    value={brandForm.name}
-                    onChange={(e) => setBrandForm({ ...brandForm, name: e.target.value })}
-                    className="bg-slate-900 border border-slate-800 focus:border-primary px-3 py-2 rounded-lg text-xs text-white focus:outline-none"
-                    placeholder="Nest"
-                  />
-                </div>
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-xs text-gray-500">Description</label>
-                  <textarea
-                    rows={3}
-                    value={brandForm.description}
-                    onChange={(e) => setBrandForm({ ...brandForm, description: e.target.value })}
-                    className="bg-slate-900 border border-slate-800 focus:border-primary px-3 py-2 rounded-lg text-xs text-white focus:outline-none resize-none"
-                    placeholder="Maker of intelligent thermostats..."
-                  />
-                </div>
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-xs text-gray-500">Logo Image</label>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={(e) => setBrandLogo(e.target.files[0])}
-                    className="text-xs text-gray-400"
-                  />
-                </div>
-                <div className="flex justify-end gap-2 mt-2">
-                  <button
-                    type="button"
-                    onClick={() => setShowBrandForm(false)}
-                    className="text-xs text-gray-400 hover:text-white px-2"
-                  >
-                    Cancel
-                  </button>
-                  <Button type="submit" variant="primary" size="sm" loading={submitLoading}>
-                    Save Brand
-                  </Button>
-                </div>
-              </form>
-            )}
-
-            <div className="border border-slate-900 rounded-2xl overflow-hidden glass">
-              <div className="bg-slate-900/50 p-4 border-b border-slate-900 text-xs font-bold uppercase tracking-wider text-slate-400">
-                Brands List
-              </div>
-              <ul className="divide-y divide-slate-900">
-                {brandsData?.map((b) => (
-                  <li key={b._id} className="p-4 flex items-center justify-between text-sm">
-                    <div>
-                      <span className="font-bold text-white">{b.name}</span>
-                      <span className="text-xs text-gray-500 block">{b.description || "No description"}</span>
-                    </div>
-                  </li>
-                ))}
-                {!brandsData?.length && (
-                  <li className="p-8 text-center text-xs text-gray-500 italic">No brands created yet.</li>
-                )}
-              </ul>
-            </div>
-          </div>
-        </div>
-      )}
+        )}
+      </main>
     </div>
   );
-};
+}
+
+function TabButton({
+  active,
+  onClick,
+  icon: Icon,
+  label,
+  badgeCount,
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={`flex w-full items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition ${
+        active
+          ? "bg-foreground text-background shadow-sm"
+          : "text-foreground/70 hover:bg-secondary hover:text-foreground"
+      }`}
+    >
+      <Icon className="h-4.5 w-4.5 shrink-0" />
+      <span>{label}</span>
+      {badgeCount !== undefined && badgeCount > 0 && (
+        <span className={`ml-auto grid h-5 min-w-[20px] place-items-center rounded-full px-1 text-[10px] font-bold ${active ? "bg-background text-foreground" : "bg-primary text-primary-foreground"}`}>
+          {badgeCount}
+        </span>
+      )}
+    </button>
+  );
+}
 
 export default Dashboard;

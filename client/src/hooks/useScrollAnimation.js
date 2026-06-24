@@ -1,56 +1,23 @@
-import { useEffect, useRef } from "react";
-import gsap from "gsap";
-import { ScrollTrigger } from "gsap/ScrollTrigger";
+import { useEffect, useRef, useState } from "react";
 
-gsap.registerPlugin(ScrollTrigger);
-
-const useScrollAnimation = (animationType = "fade-up", options = {}) => {
-  const elementRef = useRef(null);
+export function useScrollAnimation(options) {
+  const ref = useRef(null);
+  const [isInView, setIsInView] = useState(false);
 
   useEffect(() => {
-    const el = elementRef.current;
+    const el = ref.current;
     if (!el) return;
 
-    let fromVars = { opacity: 0 };
-    let toVars = {
-      opacity: 1,
-      scrollTrigger: {
-        trigger: el,
-        start: "top 85%",
-        toggleActions: "play none none none",
-        ...options.scrollTrigger,
-      },
-      duration: 0.8,
-      ease: "power2.out",
-      ...options,
-    };
+    const observer = new IntersectionObserver(([entry]) => {
+      setIsInView(entry.isIntersecting);
+    }, options);
 
-    if (animationType === "fade-up") {
-      fromVars.y = 40;
-      toVars.y = 0;
-    } else if (animationType === "fade-down") {
-      fromVars.y = -40;
-      toVars.y = 0;
-    } else if (animationType === "fade-left") {
-      fromVars.x = 40;
-      toVars.x = 0;
-    } else if (animationType === "fade-right") {
-      fromVars.x = -40;
-      toVars.x = 0;
-    } else if (animationType === "scale-up") {
-      fromVars.scale = 0.95;
-      toVars.scale = 1;
-    }
-
-    const anim = gsap.fromTo(el, fromVars, toVars);
+    observer.observe(el);
 
     return () => {
-      if (anim.scrollTrigger) anim.scrollTrigger.kill();
-      anim.kill();
+      if (el) observer.unobserve(el);
     };
-  }, [animationType]);
+  }, [options]);
 
-  return elementRef;
-};
-
-export default useScrollAnimation;
+  return [ref, isInView];
+}

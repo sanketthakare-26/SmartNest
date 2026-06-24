@@ -1,9 +1,5 @@
 const multer = require("multer");
-const { CloudinaryStorage } = require("multer-storage-cloudinary");
-const cloudinary = require("../config/cloudinary");
 
-const storage = new CloudinaryStorage({
-  cloudinary,
-  params: { folder: "smartnest", allowed_formats: ["jpg", "png", "webp"] },
-});
-module.exports = multer({ storage });
+// Use memory storage — the admin pastes image URLs, not actual file uploads.
+// If you later want real file uploads, switch to CloudinaryStorage here.
+module.exports = multer({ storage: multer.memoryStorage() });

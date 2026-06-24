@@ -1,39 +1,31 @@
-import React from "react";
 import { Link } from "react-router-dom";
-import { ArrowRight, HelpCircle } from "lucide-react";
-import AnimatedSection from "../common/AnimatedSection";
+import { AnimatedSection } from "../common/AnimatedSection";
 
-const CTABand = () => {
+export function CTABand() {
   return (
-    <section className="py-16 px-6 md:px-12 bg-gradient-to-r from-primary/10 via-dark-card to-secondary/10 border-t border-b border-slate-900 overflow-hidden relative">
-      <div className="glow-point bg-primary top-[-50px] right-[-50px] opacity-10" />
-
-      <div className="max-w-5xl mx-auto flex flex-col md:flex-row items-center justify-between gap-8 relative z-10 text-left">
-        <AnimatedSection className="flex flex-col gap-3 max-w-xl">
-          <div className="flex items-center gap-2 text-primary font-semibold text-sm">
-            <HelpCircle size={18} />
-            <span>Confused about IoT compatibility?</span>
+    <section className="px-4 pb-24 pt-8 sm:px-6">
+      <AnimatedSection className="mx-auto max-w-7xl">
+        <div className="animate-gradient-shift relative overflow-hidden rounded-[2.5rem] bg-gradient-cta p-8 shadow-lift sm:p-14">
+          <div className="relative z-10 grid gap-6 md:grid-cols-[1.4fr_1fr] md:items-center">
+            <div>
+              <h2 className="text-3xl font-extrabold leading-tight text-foreground sm:text-4xl md:text-5xl">
+                Ready to automate <br className="hidden sm:block" />your home?
+              </h2>
+              <p className="mt-4 max-w-xl text-foreground/70">
+                Free site visit, no-obligation quote, and a curated package built around your home and budget.
+              </p>
+            </div>
+            <div className="flex flex-col gap-3 sm:flex-row md:justify-end">
+              <Link to="/contact" className="rounded-full bg-foreground px-6 py-3 text-center text-sm font-semibold text-background shadow-soft hover:opacity-90">
+                Send Enquiry
+              </Link>
+              <Link to="/products" className="rounded-full bg-background/80 px-6 py-3 text-center text-sm font-semibold text-foreground backdrop-blur hover:bg-background">
+                Browse Catalog
+              </Link>
+            </div>
           </div>
-          <h3 className="text-2xl md:text-3xl font-extrabold text-white tracking-tight">
-            Get a Personalized Smart Home Blueprints Consultation
-          </h3>
-          <p className="text-gray-400 text-sm">
-            Speak with an integration expert who will map out lighting, hubs, and climate controllers specifically configured for your floor plan.
-          </p>
-        </AnimatedSection>
-
-        <AnimatedSection className="shrink-0">
-          <Link
-            to="/contact"
-            className="inline-flex items-center gap-2 px-6 py-3.5 rounded-xl bg-gradient-to-r from-primary to-secondary hover:opacity-95 text-dark font-bold transition shadow-lg hover:shadow-primary/20 text-sm"
-          >
-            <span>Book Consultation</span>
-            <ArrowRight size={16} />
-          </Link>
-        </AnimatedSection>
-      </div>
+        </div>
+      </AnimatedSection>
     </section>
   );
-};
-
-export default CTABand;
+}
