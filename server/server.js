@@ -6,9 +6,31 @@ const connectDB = require("./config/db");
 const app = express();
 connectDB();
 
-// Explicitly allow the Vite frontend dev server and any local origin
+// Explicitly allow the Vite frontend dev server, local origins, and Render deployments
+const allowedOrigins = [
+  "http://localhost:5173",
+  "http://localhost:5174",
+  "http://localhost:3000",
+  "http://127.0.0.1:5173",
+  "http://127.0.0.1:5174"
+];
+
 app.use(cors({
-  origin: ["http://localhost:5173", "http://localhost:5174", "http://localhost:3000", "http://127.0.0.1:5173", "http://127.0.0.1:5174"],
+  origin: (origin, callback) => {
+    if (!origin) return callback(null, true);
+    
+    const isAllowed = allowedOrigins.includes(origin) || 
+                      origin.startsWith("http://localhost:") || 
+                      origin.startsWith("http://127.0.0.1:") ||
+                      origin.endsWith(".onrender.com") ||
+                      origin === process.env.CLIENT_URL;
+                      
+    if (isAllowed) {
+      callback(null, true);
+    } else {
+      callback(new Error(`Not allowed by CORS: ${origin}`));
+    }
+  },
   credentials: true,
 }));
 app.use(express.json());
