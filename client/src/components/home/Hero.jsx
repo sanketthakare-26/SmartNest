@@ -4,6 +4,16 @@ import { motion } from "framer-motion";
 import { useEffect, useRef, useMemo, useState } from "react";
 import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
+import { useStore } from "@/context/StoreContext";
+
+const BASE_URL = (import.meta.env.VITE_API_URL || "http://localhost:5000").replace(/\/$/, "");
+
+function resolveImg(src) {
+  if (!src) return null;
+  if (src.startsWith("http://") || src.startsWith("https://") || src.startsWith("data:") || src.startsWith("blob:")) return src;
+  if (src.startsWith("/uploads/") || src.startsWith("uploads/")) return `${BASE_URL}/${src.replace(/^\//, "")}`;
+  return null;
+}
 
 // Local category images as reliable fallback pool
 import cctv from "@/assets/cat-cctv.jpg";
@@ -103,18 +113,29 @@ export function Hero() {
 
 
 
-  // Always use category images for floating cards — cycle through all 8 to fill 12 slots
-  const CATEGORY_POOL = [cctv, lock, gate, curtain, lift, touch, sensor, kit];
+  const { products } = useStore();
+
+  // Fallback pool — category images used when not enough product images exist
+  const FALLBACK_POOL = [cctv, lock, gate, curtain, lift, touch, sensor, kit];
 
   const cardData = useMemo(() => {
-    const pool = Array.from({ length: 12 }, (_, i) => ({
-      src: CATEGORY_POOL[i % CATEGORY_POOL.length],
-      name: ["CCTV", "Smart Locks", "Automated Gates", "Smart Curtains", "Lifts & Panels", "Touch Controls", "Sensors", "Smart Kits"][i % 8],
-    }));
+    // Get all products that have a resolvable image, then shuffle randomly
+    const withImg = products
+      .filter((p) => resolveImg(p.image))
+      .map((p) => ({ src: resolveImg(p.image), name: p.name }))
+      .sort(() => Math.random() - 0.5); // random shuffle each render
+
+    const pool =
+      withImg.length >= 6
+        ? withImg.slice(0, 12) // use up to 12 random product images
+        : FALLBACK_POOL.map((src, i) => ({ // fallback to category images
+            src,
+            name: ["CCTV", "Smart Locks", "Automated Gates", "Smart Curtains", "Lifts & Panels", "Touch Controls", "Sensors", "Smart Kits"][i],
+          }));
 
     return pool.map((item, i) => ({ ...item, ...POSITIONS[i % POSITIONS.length] }));
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [products]);
 
   // Auto-advance slideshow every 3 seconds
   useEffect(() => {
@@ -159,7 +180,7 @@ export function Hero() {
           scrollTrigger: {
             trigger: sectionRef.current,
             start: "top top",
-            end: "+=700%",   // very wide scroll range = slow, cinematic animation
+            end: "+=280%",   // tighter range — categories appear sooner after cards exit
             scrub: 3,        // heavy damping = very smooth & slow response
             pin: true,
             anticipatePin: 1,
@@ -223,8 +244,8 @@ export function Hero() {
           const innerCard = el.firstElementChild;
           if (innerCard) {
             // Calculate drift direction based on final position
-            const driftX = (pos.x > 0 ? 12 : pos.x < 0 ? -12 : 0) * (isMobile ? 0.6 : 1.0);
-            const driftY = (pos.y > 0 ? 12 : pos.y < 0 ? -12 : 0) * (isMobile ? 0.6 : 1.0);
+            const driftX = (pos.x > 0 ? 4 : pos.x < 0 ? -4 : 0) * (isMobile ? 0.6 : 1.0);
+            const driftY = (pos.y > 0 ? 4 : pos.y < 0 ? -4 : 0) * (isMobile ? 0.6 : 1.0);
             
             gsap.to(innerCard, {
               x: driftX,
@@ -232,8 +253,8 @@ export function Hero() {
               repeat: -1,
               yoyo: true,
               ease: "sine.inOut",
-              duration: 5.0 + (i % 3) * 1.0, // slower, gentler drift
-              delay: i * 0.15,
+              duration: 20.0 + (i % 4) * 2.0, // extremely slow drift 20–26s
+              delay: i * 0.5,
             });
           }
         });
