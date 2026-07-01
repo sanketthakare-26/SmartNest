@@ -4,8 +4,6 @@ import { motion } from "framer-motion";
 import { useEffect, useRef, useMemo, useState } from "react";
 import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
-import curtainHeroImg from "@/assets/cat-curtain.jpg"; // kept for safety
-import { useStore } from "@/context/StoreContext";
 
 // Local category images as reliable fallback pool
 import cctv from "@/assets/cat-cctv.jpg";
@@ -23,15 +21,6 @@ import hero4 from "@/assets/hero image 4.jpg";
 
 gsap.registerPlugin(ScrollTrigger);
 
-const BASE_URL = (import.meta.env.VITE_API_URL || "http://localhost:5000").replace(/\/$/, "");
-
-// Resolve a product image URL to something displayable
-function resolveImg(src) {
-  if (!src) return null;
-  if (src.startsWith("http://") || src.startsWith("https://") || src.startsWith("data:") || src.startsWith("blob:")) return src;
-  if (src.startsWith("/uploads/") || src.startsWith("uploads/")) return `${BASE_URL}/${src.replace(/^\//, "")}`;
-  return null;
-}
 
 // Full-screen scatter — corners, edges, and mid positions across the whole viewport
 const POSITIONS = [
@@ -112,24 +101,20 @@ export function Hero() {
   const [currentSlide, setCurrentSlide] = useState(0);
   const [prevSlide, setPrevSlide] = useState(null);
 
-  const { products } = useStore();
 
-  // Pick up to 12 product images (with server URL), fall back to category assets
-  const FALLBACK_POOL = [cctv, lock, gate, curtain, lift, touch, sensor, kit, hero, hero2, hero3, hero4];
+
+  // Always use category images for floating cards — cycle through all 8 to fill 12 slots
+  const CATEGORY_POOL = [cctv, lock, gate, curtain, lift, touch, sensor, kit];
 
   const cardData = useMemo(() => {
-    const withImg = products
-      .filter((p) => resolveImg(p.image))
-      .map((p) => ({ src: resolveImg(p.image), name: p.name }));
-
-    const pool =
-      withImg.length >= 6
-        ? withImg.slice(0, 12)
-        : FALLBACK_POOL.slice(0, 12).map((src, i) => ({ src, name: `Product ${i + 1}` }));
+    const pool = Array.from({ length: 12 }, (_, i) => ({
+      src: CATEGORY_POOL[i % CATEGORY_POOL.length],
+      name: ["CCTV", "Smart Locks", "Automated Gates", "Smart Curtains", "Lifts & Panels", "Touch Controls", "Sensors", "Smart Kits"][i % 8],
+    }));
 
     return pool.map((item, i) => ({ ...item, ...POSITIONS[i % POSITIONS.length] }));
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [products]);
+  }, []);
 
   // Auto-advance slideshow every 3 seconds
   useEffect(() => {
@@ -174,20 +159,36 @@ export function Hero() {
           scrollTrigger: {
             trigger: sectionRef.current,
             start: "top top",
-            end: "+=400%",   // much wider scroll range = slower, more gradual animation
-            scrub: 1.5,      // smooth and dampened
+            end: "+=700%",   // very wide scroll range = slow, cinematic animation
+            scrub: 3,        // heavy damping = very smooth & slow response
             pin: true,
             anticipatePin: 1,
           },
         });
 
         // 0→0.30 — hero content fades out
-        tl.to(contentRef.current,    { opacity: 0, scale: 0.90, duration: 0.3, ease: "power2.inOut" }, 0);
-        tl.to(scrollHintRef.current, { opacity: 0, duration: 0.15 }, 0);
+        tl.fromTo(contentRef.current,
+          { opacity: 1, scale: 1 },
+          { opacity: 0, scale: 0.90, duration: 0.3, ease: "power2.inOut" },
+          0
+        );
+        tl.fromTo(scrollHintRef.current,
+          { opacity: 1 },
+          { opacity: 0, duration: 0.15 },
+          0
+        );
 
         // 0→0.40 — image halves split apart
-        tl.to(topHalfRef.current,    { yPercent: -100, duration: 0.4, ease: "power2.inOut" }, 0);
-        tl.to(bottomHalfRef.current, { yPercent:  100, duration: 0.4, ease: "power2.inOut" }, 0);
+        tl.fromTo(topHalfRef.current,
+          { yPercent: 0 },
+          { yPercent: -100, duration: 0.4, ease: "power2.inOut" },
+          0
+        );
+        tl.fromTo(bottomHalfRef.current,
+          { yPercent: 0 },
+          { yPercent: 100, duration: 0.4, ease: "power2.inOut" },
+          0
+        );
 
         // 0.08→0.23 — floating product wrapper fades in
         tl.fromTo(
